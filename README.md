@@ -1,6 +1,6 @@
-![MHBE logo](https://www.marylandhbe.com/wp-content/themes/marylandhbe/images/icon-enroll-here.png) 
+![MHBE logo](https://raw.githubusercontent.com/Maryland-Health-Benefits-Exchange/MD_uninsured_analysis/main/MHBE_color_transparent.png) 
 
-# COVID_uninsured_analysis
+# MD_uninsured_analysis
 Analysis of uninsured pre and post COVID-19-related loss of ESI 
 adj. to account for unauth. immigrants
 
