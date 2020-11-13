@@ -1,0 +1,801 @@
+---
+title: "Uninsured Analysis"
+output:
+  flexdashboard::flex_dashboard:
+    theme: yeti
+    orientation: rows
+    vertical_layout: scroll
+    logo: data/mhbelogo.png
+    social: menu
+    source: embed
+    includes:
+      after_body: footer.html
+bibliography: citations.bib
+runtime: shiny
+---
+
+<script>
+$('.navbar-logo').wrap('<a href="http://www.marylandhbe.com" target=blank>');
+</script>
+
+<script>
+$(document).ready(function(){
+    $('[data-toggle="tooltip"]').tooltip(position: below;); 
+});
+</script>
+
+
+```{r setup, include=FALSE}
+library(ipumsr) # import ACS microdata from IPUMS.org
+library(acs) # useful functions for working w/ ACS data
+library(tidyverse) # many useful syntax and QOL functions
+library(labelled) # labels variables/values
+library(janitor) # cleans up column names
+library(stringr) # for working with strings
+library(knitr) # for RMarkdown to HTML
+library(rmarkdown) # to generate Rmd final document
+library(flexdashboard) # to generate Rmd dashboard
+library(sf) # simple features for mapping
+library(leaflet) # creates interactive maps
+#library(mapview) # saves the image of the map for exporting
+#library(mapedit) # more map tools
+library("esri2sf") # import ESRI ArcGIS maps as shapefiles
+library(tigris) # import TIGRIS shapefile data
+library(htmlwidgets) # export leaflet maps to HTML
+library(DT) # display HTML tables from dataframes/matrices
+library(shiny) # dashboard interactivity
+library(plotly) # interactive ggplots
+#library(bsplus) # bootstrap markup objects library
+library(htmltools)
+
+# read in data
+acs_df <- readRDS("data/processed/acs_df.Rds")
+puma.sf <- readRDS("data/processed/puma-sf.Rds")
+df.summary <- readRDS("data/processed/df-summary.Rds")
+cnty.sf <- readRDS("data/processed/cnty-sf.Rds")
+unins.age.plot <- readRDS("data/processed/unins-age-plot.Rds")
+esi.age.plot <- readRDS("data/processed/esi-age-plot.Rds")
+unins.race.plot <- readRDS("data/processed/unins-race-plot.Rds")
+esi.race.plot <- readRDS("data/processed/esi-race-plot.Rds")
+df.unins.pop <- readRDS("data/processed/df-unins-pop.Rds")
+df.summ.unfilt <- readRDS("data/processed/df-summ-unfilt.Rds")
+df.esi.loss.inelig <- readRDS("data/processed/df-esi-loss-inelig.Rds")
+df.esi.loss.a.qhp <- readRDS("data/processed/df-esi-loss-a-qhp.Rds")
+df.esi.loss.ya.qhp <- readRDS("data/processed/df-esi-loss-ya-qhp.Rds")
+df.esi.loss.caid <- readRDS("data/processed/df-esi-loss-caid.Rds")
+df.ind.esi.loss <- readRDS("data/processed/df-ind-esi-loss.Rds")
+df <- readRDS("data/processed/df.Rds")
+df.unins.pop.state.filt <- readRDS("data/processed/df-unins-pop-state-filt.Rds")
+df.esi.loss.state.inelig <- readRDS("data/processed/df-esi-loss-state-inelig.Rds")
+age.fpl.plot <- readRDS("data/processed/age-fpl-plot.Rds")
+post.esi.race.plot <- readRDS("data/processed/post-esi-race-plot.Rds")
+post.unins.age.plot <- readRDS("data/processed/post_unins-age-plot.Rds")
+post.esi.age.plot <- readRDS("data/processed/post-esi-age-plot.Rds")
+post.unins.race.plot <- readRDS("data/processed/post-unins-race-plot.Rds")
+post.age.fpl.plot <- readRDS("data/processed/post-age-fpl-plot.Rds")
+df.esi.loss.state.unfilt <- readRDS("data/processed/df-esi-loss-state-unfilt.Rds")
+df.elig.pre <- readRDS("data/processed/df-elig-pre.Rds")
+
+```
+
+
+Sidebar {.sidebar}
+=====================================
+
+* An estimated 357,000 Marylanders lacked health coverage at the end of 2019.
+
+* Of this group, an estimated 200,000 individuals were eligible for Medicaid or financial help with private health insurance plans.
+
+* Young adults aged 19-34 are the most likely to be uninsured. An estimated 11% of young adults in this range lack coverage but are eligible to enroll through Maryland Health Connection.
+
+* Between March and August 2020, an estimated 112,000 Marylanders lost a job that provided health insurance.
+
+* Of this group, an estimated 65,000 individuals became uninsured due to COVID related job loss.
+
+
+<a href = "#" data-toggle="tooltip" title="Shows analysis of the uninsured population based on the 2018 5-year ACS data, prior to the COVID-19 pandemic."><span style="color:white">2018/19 Uninsured</span></a> {data-icon="fa-map-marked"}
+=====================================
+
+## Row 1
+-------------------------------------
+
+### Total Uninsured {.value-box data-height=50}
+```{r}
+  #   # number of uninsured who are lawfully present and not institutionalized (352,265)
+  # unins.state <- acs_df_state %>% summarize(uninsured = sum(ifelse(hcovany==1 & relate != 13, 
+  #                                                          perwt, 0)))
+  # unins.input <- format(unins.state$uninsured, big.mark = ",", trim=TRUE)
+  # valueBox(value = unins.input)
+# Alternative values obtained from Census report HI_05 (357,000 uninsured): 
+# https://www.census.gov/data/tables/time-series/demo/health-insurance/acs-hi.html
+valueBox("357,000")
+```
+ 
+### Uninsured, MHC Eligible {.value-box data-height=50}
+```{r}
+    # number of uninsured who are lawfully present and not institutionalized (251,064)
+  # unins.state.filt <- acs_df_state %>% summarize(uninsured = sum(ifelse(hcovany==1 & lawful==1 & relate != 13, 
+  #                                                          perwt, 0)))
+  # unins.input.filt <- format(unins.state.filt$uninsured, big.mark = ",", trim=TRUE)
+  # valueBox(unins.input.filt)
+
+# Alternative values obtained from Census report HI_05 (357,000 uninsured): 
+# https://www.census.gov/data/tables/time-series/demo/health-insurance/acs-hi.html
+# Adjusted for unauthorized migrants using CMSNY data tool total of uninsured 
+# unauthorized, 98,999
+valueBox("258,000")
+```
+
+### Total Insured {.value-box data-height=50}
+```{r}
+# any insurance (5,624,736)
+  # ins.state <- acs_df_state %>% summarize(insured = sum(ifelse(hcovany==2 & relate != 13, 
+  #                                                      perwt, 0)))
+  # ins.input <- format(ins.state$insured, big.mark = ",", trim=TRUE)
+  # valueBox(ins.input, color = "success")
+
+# Alternative values obtained from Census report HI_05 (5,589,000 any insurance): 
+# https://www.census.gov/data/tables/time-series/demo/health-insurance/acs-hi.html
+valueBox("5,589,000", color = "success")
+```
+
+### Insured Through Employer {.value-box data-height=50}
+```{r}
+# employer-sponsored insurance (3,774,936)
+  # esi.state <- acs_df_state %>% summarize(esi = sum(ifelse(hinsemp==2 & relate != 13, 
+  #                                                      perwt, 0)))
+  # esi.input <- format(esi.state$esi, big.mark = ",", trim=TRUE)
+  # valueBox(esi.input, color = "success")
+
+# Alternative values obtained from Census report HI_05 (3,753,000 emp insurance): 
+# https://www.census.gov/data/tables/time-series/demo/health-insurance/acs-hi.html
+valueBox("3,753,000", color = "success")
+```
+
+### Total Percent Uninsured {.value-box data-height=50}
+```{r}
+  # percent uninsured of non-institutionalized population, calculated from ACS
+# 2018 1-year IPUMS microdata (5.89%)
+# pct.unins.state.filt <- acs_df_state %>% summarize(pct_unins = (sum(ifelse(hcovany==1 & relate != 13, perwt, 0)))/(sum(ifelse(relate != 13, perwt, 0))))
+#   pct.unins.input <- pct.unins.state.filt$pct_unins
+  # valueBox(paste0(round(pct.unins.input,4)*100,"%"))
+
+# Alternative values obtained from Census report HI_05: 
+# https://www.census.gov/data/tables/time-series/demo/health-insurance/acs-hi.html
+valueBox("6.0%")
+```
+
+
+
+## Row 2 {data-height=600 .tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### <a href = "#" data-toggle="tooltip" title="All uninsured non-institutionalized persons, including those ineligible to enroll in coverage through Maryland Health Connection.">Total Uninsured</a>
+
+```{r}
+# join data to shapefile by puma
+joined <- ipums_shape_inner_join(df.summ.unfilt, puma.sf, by=c("puma"="PUMACE10"))
+# define palette to use, use range of uninsured values for scale of colors
+pal <- colorNumeric(palette = "YlGnBu", domain = 3000:35000)
+# create simple popup with PUMA name and total uninsured estimate
+popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Uninsured: ", 
+                format(round(joined$uninsured,0), big.mark = ",", trim=TRUE))
+# generate leaflet object, define basemap
+leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  # add shapes for uninsured totals, define color fill palette
+  addPolygons(data=joined, fillColor = ~pal(uninsured), 
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.7, weight = 1, 
+              # white outline on hover or click
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              # smooth out shapes for better performance, define popup params
+              smoothFactor = 0.2, popup = popup, label = joined$NAMELSAD10
+              ) %>% 
+  # add simple legend with color scale and labels in bottom right corner
+  addLegend(pal = pal, values = joined$uninsured, position = "bottomright", 
+            title = "Total Uninsured by PUMA") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE))
+
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="Uninsured non-institutionalized persons eligible to enroll in coverage through Maryland Health Connection ('Eligible Uninsured').">Eligible Uninsured</a>
+
+```{r}
+# join data to shapefile by puma
+joined <- ipums_shape_inner_join(df.summary, puma.sf, by=c("puma"="PUMACE10"))
+# define palette to use, use range of uninsured values for scale of colors
+pal <- colorNumeric(palette = "YlGnBu", domain = 3000:16000)
+# create simple popup with PUMA name and total uninsured estimate
+popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Uninsured: ", 
+                format(round(joined$uninsured,0), big.mark = ",", trim=TRUE))
+# generate leaflet object, define basemap
+leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  # add shapes for uninsured totals, define color fill palette
+  addPolygons(data=joined, fillColor = ~pal(uninsured), 
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.7, weight = 1, 
+              # white outline on hover or click
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              # smooth out shapes for better performance, define popup params
+              smoothFactor = 0.2, popup = popup, label = joined$NAMELSAD10
+              ) %>% 
+  # add simple legend with color scale and labels in bottom right corner
+  addLegend(pal = pal, values = joined$uninsured, position = "bottomright", 
+            title = "Eligible Uninsured by PUMA") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="Percentage of eligible uninsured out of total population.">Uninsured Rates</a>
+
+```{r}
+# join data to shapefile by puma
+joined <- ipums_shape_inner_join(df.summary, puma.sf, by=c("puma"="PUMACE10"))
+# define palette to use, use range of uninsured values for scale of colors
+pal <- colorNumeric(palette = "YlGnBu", domain = 0:13)
+# create simple popup with PUMA name and total uninsured estimate
+popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Percent Uninsured: ", 
+                 round((joined$pct_uninsured)*100,2), "%")
+# generate leaflet object, define basemap
+leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  # add shapes for uninsured totals, define color fill palette
+  addPolygons(data=joined, fillColor = ~pal(pct_uninsured*100), 
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.7, weight = 1, 
+              # white outline on hover or click
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              # smooth out shapes for better performance, define popup params
+              smoothFactor = 0.2, popup = popup, label = joined$NAMELSAD10
+              ) %>% 
+  # add simple legend with color scale and labels in bottom right corner
+  addLegend(pal = pal, values = joined$pct_uninsured*100, position = "bottomright", 
+            title = "Percent Eligible Uninsured by PUMA") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="Total eligible uninsured by county.">Uninsured by County</a>
+
+```{r}
+# read in PUMA to County crosswalk
+geocorrP2C <- read_csv("data/raw/geocorr2018.csv")
+geocorrP2C <- geocorrP2C[-1,]
+geocorrP2C <- geocorrP2C %>% mutate(puma = sprintf("%05d", as.numeric(puma12)))
+# join crosswalk to unins df by ZIP
+map3 <- left_join(df.summary, geocorrP2C, by = "puma")
+# calculate unins per PUMA using allocation factor
+map3 <- map3 %>% mutate(unins.cnty = uninsured*as.numeric(afact))
+# aggregate up to puma level, summing the allocated claims
+cnty.map.unins <- map3 %>% group_by(county) %>% 
+  summarise(uninsured.cnty = sum(unins.cnty, na.rm = TRUE))
+# join shapefile to data
+joined.cnty <- ipums_shape_inner_join(cnty.map.unins, cnty.sf, by=c("county"="GEOID"))
+# define palette and popups
+bins <- c(0,1000,5000,10000,20000,30000,40000,50000,60000)
+pal <- colorBin(palette = "YlGnBu", domain = joined.cnty$uninsured.cnty, bins = bins)
+popup <- paste0("Area: ", joined.cnty$NAMELSAD, "<br>", "Uninsured: ", 
+                format(round(joined.cnty$uninsured.cnty,0), big.mark = ",", trim=TRUE))
+
+leaflet(joined.cnty, height = 400) %>% 
+  addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  addPolygons(data=joined.cnty, fillColor = ~pal(uninsured.cnty),
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.6, weight = 1, 
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              smoothFactor = 0.2, popup = ~popup, label = joined.cnty$NAMELSAD) %>%
+  addLegend("bottomright", pal = pal, values = ~uninsured.cnty,
+            title = "Eligible Uninsured by County") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="Uninsured and ESI-covered populations by age & race/ethnicity.">Demographic Breakdowns</a>
+
+```{r}
+fillRow(
+  fillCol(ggplotly(unins.age.plot, self_contained = FALSE) %>% layout(legend = list(yanchor = "center")), 
+          ggplotly(esi.age.plot, self_contained = FALSE) %>% layout(legend = list(yanchor = "center"))),
+  fillCol(ggplotly(unins.race.plot, self_contained = FALSE) %>% layout(legend = list(yanchor = "center")), 
+          ggplotly(esi.race.plot, self_contained = FALSE) %>% layout(legend = list(yanchor = "center"))),
+flex = c(1,1.5))
+
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="MHC Eligible uninsured by age and percent of income to the federal poverty level (FPL).">Uninsured by Age & FPL</a>
+
+```{r, fig.width=10,fig.height=11}
+  ggplotly(age.fpl.plot, self_contained = FALSE) %>%
+  layout(title ="Uninsured, MHC Eligible by Age Group and Percent of the Federal Poverty Level")
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="MHC eligible uninsured population by eligibility for financial assistance.">Eligibility Breakdowns</a>
+
+```{r}
+sketch = withTags(table(
+  class = 'display',
+  thead(
+    tr(
+      th(rowspan = 2, style = 'border-right: solid 2px;','Public Use Microdata Area'),
+      th(colspan = 4, style = 'border-right: solid 2px;', 'Eligible for Financial Assistance'),
+      th(colspan = 3, style = 'border-right: solid 2px;', 'Ineligible for Financial Assistance')
+    ),
+    tr(
+      th(colspan = 1, 'Adults - QHP Subsidy Eligible'),
+      th(colspan = 1, 'Adults - Medicaid Eligible'),
+      th(colspan = 1, 'Children - QHP Subsidy or Medicaid Eligible'),
+      th(colspan = 1, style = 'border-right: solid 2px;', 'Total'),
+      th(colspan = 1, 'Income over 400% FPL'),
+      th(colspan = 1, 'Offer of Employer-Sponsored Insurance'),
+      th(colspan = 1, style = 'border-right: solid 2px;', 'Total')
+    )
+  )
+))
+
+#fillRow(
+  datatable(df.elig.pre, container=sketch, rownames=FALSE, extensions = 'Buttons', 
+          options = list(pageLength = 20, scrollY = "310px", dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print')), caption = htmltools::tags$caption("Maryland Health Connection Eligible uninsured population, broken down by potential eligibility for financial assistance through qualified health plans (QHP) or Medicaid (MA).", style="font-size:150%")) %>% 
+  formatStyle(c(1,5,8), `border-right` = "solid 2px")
+#)
+```
+
+## Row 3 
+-------------------------
+
+>"The Uninsured, MHC Eligible" and "Eligible Uninsured"  estimates exclude  undocumented immigrants because they are not eligible to enroll in coverage through Maryland Health Connection (MHC). Statewide estimates include some best-estimate assumptions not applied at the sub-state level. See Methodology for detail.
+
+<a href = "#" data-toggle="tooltip" title="Shows the uninsured population after estimating the loss of Employer-Sponsored Insurance (ESI) as a result of job losses due to COVID-19."><span style="color:white">Potential COVID Impact</span></a> {data-icon="fa-map-marked-alt"}
+=====================================
+
+## Row 1
+-------------------------------------
+### Total Uninsured {.value-box data-height=50}
+```{r}
+  # number of uninsured (not institutionalized) if everyone who lost ESI becomes
+  # uninsured and including unauthorized individuals
+  unins.state.post <- df.esi.loss.state.unfilt$new_unins
+  unins.post.input.worst <- format(round(unins.state.post,0), big.mark = ",", trim=TRUE)
+  valueBox(unins.post.input.worst)
+```
+
+### Uninsured, MHC Eligible {.value-box data-height=50}
+```{r}
+  # number of uninsured who are lawfully present and not institutionalized if
+  # only those ineligible for subsidized QHP or Medicaid become uninsured
+  unins.post.input <- df.unins.pop.state.filt$new_unins
+  unins.post.input <- format(round(unins.post.input,0), big.mark = ",", trim=TRUE)
+  valueBox(unins.post.input)
+```
+
+### Total Insured {.value-box data-height=50}
+```{r}
+  ins.input.post <- format(round(df.esi.loss.state.unfilt$new_insured,0), big.mark = ",", trim=TRUE)
+  valueBox(ins.input.post, color = "success")
+
+```
+
+### Insured Through Employer {.value-box data-height=50}
+```{r}
+# new ESI figure, plus the 35% of those who lost ESi who enroll via their spouse
+  esi.input.post <- format(round(df.esi.loss.state.unfilt$new_ins_emp,0), big.mark = ",", trim=TRUE)
+  valueBox(esi.input.post, color = "success")
+```
+
+### Total Percent Uninsured {.value-box data-height=50}
+```{r}
+  # percent uninsured non-institutionalized population
+  pct.unins.input.post <- df.esi.loss.state.unfilt$new_pct_unins 
+  valueBox(paste0(round(pct.unins.input.post,3)*100,"%"))
+```
+
+
+## Row 2 {data-height=600 .tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### <a href = "#" data-toggle="tooltip" title="All uninsured non-institutionalized persons, including those ineligible to enroll in coverage through Maryland Health Connection, adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Total Uninsured</a>
+
+```{r}
+# join data to shapefile by puma
+joined <- ipums_shape_inner_join(df.unins.pop, puma.sf, by=c("puma"="PUMACE10"))
+# define palette to use, use range of uninsured values for scale of colors
+pal <- colorNumeric(palette = "YlGnBu", domain = 3000:35000)
+# create simple popup with PUMA name and total uninsured estimate
+popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Uninsured: ", 
+                format(round(joined$new_unins,0), big.mark = ",", trim=TRUE))
+# generate leaflet object, define basemap
+leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  # add shapes for uninsured totals, define color fill palette
+  addPolygons(data=joined, fillColor = ~pal(new_unins), 
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.7, weight = 1, 
+              # white outline on hover or click
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              # smooth out shapes for better performance, define popup params
+              smoothFactor = 0.2, popup = popup, label = joined$NAMELSAD10
+              ) %>% 
+  # add simple legend with color scale and labels in bottom right corner
+  addLegend(pal = pal, values = joined$new_unins, position = "bottomright", 
+            title = "Total Uninsured by PUMA") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="Uninsured non-institutionalized persons eligible to enroll in coverage through Maryland Health Connection ('Eligible Uninsured'), adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Eligible Uninsured</a>
+
+```{r}
+# join data to shapefile by puma
+joined <- ipums_shape_inner_join(df.unins.pop.filt, puma.sf, by=c("puma"="PUMACE10"))
+# define palette to use, use range of uninsured values for scale of colors
+pal <- colorNumeric(palette = "YlGnBu", domain = 3000:16000)
+# create simple popup with PUMA name and total uninsured estimate
+popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Uninsured: ", 
+                 format(round(joined$new_unins,0), big.mark = ",", trim=TRUE))
+# generate leaflet object, define basemap
+leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  # add shapes for uninsured totals, define color fill palette
+  addPolygons(data=joined, fillColor = ~pal(new_unins), 
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.7, weight = 1, 
+              # white outline on hover or click
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              # smooth out shapes for better performance, define popup params
+              smoothFactor = 0.2, popup = popup, label = joined$NAMELSAD10
+              ) %>% 
+  # add simple legend with color scale and labels in bottom right corner
+  addLegend(pal = pal, values = joined$new_unins, position = "bottomright", 
+            title = "Eligible Uninsured by PUMA") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="Percentage of eligible uninsured out of total population, adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Uninsured Rates</a>
+
+```{r}
+# join data to shapefile by puma
+joined <- ipums_shape_inner_join(df.unins.pop.filt, puma.sf, by=c("puma"="PUMACE10"))
+# define palette to use, use range of uninsured values for scale of colors
+pal <- colorNumeric(palette = "YlGnBu", domain = 0:13)
+# create simple popup with PUMA name and total uninsured estimate
+popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Percent Uninsured: ", 
+                 round((joined$new_pct_unins)*100,2), "%")
+# generate leaflet object, define basemap
+leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  # add shapes for uninsured totals, define color fill palette
+  addPolygons(data=joined, fillColor = ~pal(new_pct_unins*100), 
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.7, weight = 1, 
+              # white outline on hover or click
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              # smooth out shapes for better performance, define popup params
+              smoothFactor = 0.2, popup = popup, label = joined$NAMELSAD10
+              ) %>% 
+  # add simple legend with color scale and labels in bottom right corner
+  addLegend(pal = pal, values = joined$new_pct_unins*100, position = "bottomright", 
+            title = "Percent Eligible Uninsured by PUMA") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="Total eligible uninsured by county, adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Uninsured by County</a> 
+
+```{r}
+# join crosswalk to unins df by ZIP
+map3 <- left_join(df.unins.pop.filt, geocorrP2C, by = "puma")
+# calculate unins per PUMA using allocation factor
+map3 <- map3 %>% mutate(unins.cnty = new_unins*as.numeric(afact))
+# aggregate up to puma level, summing the allocated claims
+cnty.map.unins <- map3 %>% group_by(county) %>% 
+  summarise(uninsured.cnty = sum(unins.cnty, na.rm = TRUE))
+# join shapefile to data
+joined.cnty <- ipums_shape_inner_join(cnty.map.unins, cnty.sf, by=c("county"="GEOID"))
+# define palette and popups
+bins <- c(0,1000,5000,10000,20000,40000,60000,80000,100000)
+pal <- colorBin(palette = "YlGnBu", domain = joined.cnty$uninsured.cnty, bins = bins)
+popup <- paste0("Area: ", joined.cnty$NAMELSAD, "<br>", "Uninsured: ", 
+                format(round(joined.cnty$uninsured.cnty,0), big.mark = ",", trim=TRUE))
+
+leaflet(joined.cnty, height = 400) %>% 
+  addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  addPolygons(data=joined.cnty, fillColor = ~pal(uninsured.cnty),
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.6, weight = 1, 
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              smoothFactor = 0.2, popup = ~popup, label = joined.cnty$NAMELSAD) %>%
+  addLegend("bottomright", pal = pal, values = ~uninsured.cnty,
+            title = "Eligible Uninsured by County") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
+### <a href = "#" data-toggle="tooltip" title="Uninsured and ESI-covered populations by age & race/ethnicity, adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Demographic Breakdowns</a> 
+
+```{r}
+fillRow(
+  fillCol(ggplotly(post.unins.age.plot, self_contained = FALSE), ggplotly(post.esi.age.plot, self_contained = FALSE)), fillCol(ggplotly(post.unins.race.plot, self_contained = FALSE), ggplotly(post.esi.race.plot, self_contained = FALSE) ),
+flex = c(1,1.5))
+
+```
+
+
+### <a href = "#" data-toggle="tooltip" title="MHC Eligible uninsured by age and percent of income to the federal poverty level (FPL), adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Uninsured by Age & FPL</a> 
+
+```{r}
+  ggplotly(post.age.fpl.plot, self_contained = FALSE) %>%
+  layout(title ="Potential Uninsured, MHC Eligible by Age Group and Percent FPL")
+```
+
+### <a href = "#" data-toggle="tooltip" title="MHC eligible uninsured population by eligibility for financial assistance, adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Eligibility Breakdowns</a> 
+
+```{r}
+sketch = withTags(table(
+  class = 'display',
+  thead(
+    tr(
+      th(rowspan = 2, style = 'border-right: solid 2px;','Public Use Microdata Area'),
+      th(colspan = 4, style = 'border-right: solid 2px;', 'Eligible for Financial Assistance'),
+      th(colspan = 3, style = 'border-right: solid 2px;', 'Ineligible for Financial Assistance')
+    ),
+    tr(
+      th(colspan = 1, 'Adults - QHP Subsidy Eligible'),
+      th(colspan = 1, 'Adults - Medicaid Eligible'),
+      th(colspan = 1, 'Children - QHP Subsidy or Medicaid Eligible'),
+      th(colspan = 1, style = 'border-right: solid 2px;', 'Total'),
+      th(colspan = 1, 'Income over 400% FPL'),
+      th(colspan = 1, 'Offer of Employer-Sponsored Insurance **'),
+      th(colspan = 1, style = 'border-right: solid 2px;', 'Total')
+    )
+  )
+))
+js <- c(
+  "function(settings){",
+  "  var datatable = settings.oInstance.api();",
+  "  var table = datatable.table().node();",
+  "  var caption = '** Estimated number of uninsured with offers of ESI remains unchanged as we cannot estimate the number of newly uninsured due to COVID job loss who could get ESI from their spouse or second jobs.', style = 'caption-side: bottom; text-align: center; color:grey; font-size:100% ;'",
+  "  $(table).append('<caption style=\"caption-side: bottom\">' + caption + '</caption>');",
+  "}"
+)
+fillRow(
+  datatable(df.elig.post, container=sketch, rownames=FALSE, caption = htmltools::tags$caption('Uninsured population post-COVID ESI loss, broken down by possible eligibility for Qualified Health Plans (QHP) or Medicaid (MA).', style="font-size:150%"),
+          extensions = 'Buttons', options = list(pageLength = 20, scrollY = "310px", dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'), drawCallback = JS(js))) %>% 
+  formatStyle(c(1,5,8), `border-right` = "solid 2px")
+)
+
+```
+
+## Row 3 
+-------------------------------------
+>"The Uninsured, MHC Eligible" and "Eligible Uninsured" estimates exclude  undocumented immigrants because they are not eligible to enroll in coverage through Maryland Health Connection (MHC). Statewide estimates include some best-estimate assumptions not applied at the sub-state level. See Methodology for detail.
+
+
+
+<a href = "#" data-toggle="tooltip" title="Shows the breakdown of job loss and subsequent loss of ESI by industry, along with the geographic distribution of unemployment claims from 3/1-9/12 (Pierce 2020)."><span style="color:white">COVID-19 ESI Losses</span></a> {data-icon="fa-table"}
+=====================================
+
+## Row {data-height=600 .tabset .tabset-fade}
+-----------------------------------------------------------------------
+
+### <a href = "#" data-toggle="tooltip" title="Estimated Job Loss & Subsequent ESI Loss by Industry">Job Loss By Industry</a> 
+
+```{r}
+datatable(df.ind.esi.loss, extensions = 'Buttons', caption = htmltools::tags$caption('Estimated percent of jobs lost due to COVID-19 pandemic (based on analysis completed by Urban Institute) and resulting estimate of people who lost ESI by Industry and PUMA.', style="font-size:150%"), options = list(pageLength = 20, scrollY = "310px", dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print')),
+          colnames = c("Industry (Bureau of Labor Statistics)", "Total Pop", "Insured",
+                                        "Uninsured", "ESI", "Employed Before", 
+                                        "Net Unemployed After", "Percent Change",
+                                        "Lost ESI")) %>%
+  formatRound("tpop", 0) %>% formatRound("insured", 0) %>% formatRound("uninsured", 0) %>%
+  formatRound("ins_emp", 0) %>% formatRound("total_emp_pre", 0) %>% 
+  formatRound("total_unemp_post",0) %>% formatPercentage("pct_change_imputed", 2) %>% 
+  formatRound("esi_loss", 0)
+
+```
+
+
+
+### <a href = "#" data-toggle="tooltip" title="Maps showing the unemployment claims from 3/1-09/12, by County. Original by ZIP code map was generated by A. Pierce at LABOR (Pierce 2020).">Pandemic Unemployment Claims Maps</a> 
+
+```{r}
+# using ArcGIS URL ensures up-to-date data
+
+# isolate just the claims as a dataframe
+claims <- as.data.frame(select(df, c("ZIPCODE1", "ZIPName", 
+                                     "Claim_Type", "ZipCode", "Claims", "County")
+                               ))
+# drop the geo metadata
+claims <- claims[,-7]
+# read in ZIP to PUMA crosswalk
+geocorr2018 <- read_csv("data/raw/geocorr_zip_to_PUMA.csv")
+# join crosswalk to claims df by ZIP
+map <- left_join(claims, geocorr2018, by = c("ZIPCODE1"="zcta5"))
+# calculate claims per PUMA using allocation factor
+map <- map %>% mutate(puma.claims = Claims*as.numeric(afact))
+# aggregate up to puma level, summing the allocated claims
+puma.map <- map %>% group_by(puma12) %>% summarise(claims = sum(puma.claims, 
+                                                                na.rm = TRUE))
+
+###################################### Unemployment by PUMA map
+# join puma level data to puma shapefile
+my.map <- geo_join(puma.sf, puma.map, "PUMACE10", "puma12", how="left")
+pal = colorNumeric("YlOrRd", domain = my.map$claims)
+# Setting up the pop up text
+popup <- paste0("Area: ", my.map$NAMELSAD10, "<br>", "Total UI Claims: ", 
+                format(round(my.map$claims,0), big.mark = ",", trim=TRUE))
+# map UI by PUMA
+leaflet(my.map, height = 400) %>% 
+  addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  addPolygons(color = "#444444", weight = 1, smoothFactor = 0.5,
+              opacity = 1.0, fillOpacity = 0.5,
+              fillColor = ~pal(claims),
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              popup = ~popup, label = my.map$NAMELSAD10) %>%
+  addLegend("bottomright", pal = pal, values = ~claims,
+            title = "UI Claims by PUMA",
+            opacity = 1
+  ) %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
+
+
+<a href = "#" data-toggle="tooltip" title="Details the steps in this analysis and relevant assumptions and limitations."><span style="color:white">Methodology</span></a> {data-icon="fa-info-circle"}
+=====================================
+
+__Background__
+
+A [previous analysis of the uninsured population in Maryland](https://arcg.is/1zPiHf) was completed using the 2018 5-year American Community Survey (ACS) table C27016, "HEALTH INSURANCE COVERAGE STATUS BY RATIO OF INCOME TO POVERTY LEVEL IN THE PAST 12 MONTHS BY AGE", with ArcGIS. In an effort to increase transparency, accessibility, and reproducibility, the Maryland Health Benefit Exchange's (MHBE) data analyst undertook the task of creating a new data analysis pipeline that would allow for flexible analysis of the uninsured population under varying situations. The Census Bureau publishes Public Use Microdata Samples (PUMS) each year that are available at the person or household level allowing researchers to create their own tables or extracts of the available census surveys including the ACS. The University of Minnesota publishes census and survey microdata that has been extensively harmonized, cleaned, and annotated for use by researchers via their IPUMS projects and this analysis utilized the IPUMS USA project to generate a data extract from the 2018 5-year ACS dataset [@ruggles2020]. IPUMS also maintains a library, [ipumsr](https://github.com/mnpopcenter/ipumsr), for Rstudio that allowed us to import and edit the data and metadata directly using the R Programming Language [@RStudio]. 
+
+Using these data, along with other data detailed below, MHBE completed an analysis of the uninsured population in Maryland. With the onset of the COVID-19 pandemic and subsequent job losses in early 2020, it became clear that the uninsured population would likely be impacted as people lost their employer-sponsored insurance (ESI) when they lost their jobs. Therefore, an additional analysis of the impact of COVID-19 related job losses and subsequent loss of ESI was integrated into this analysis using a modified version of the analysis completed by the Urban Institute for their report "Estimating Low Income Job loss due to COVID-19", which we have made available on [GitHub](https://github.com/Maryland-Health-Benefits-Exchange/covid-neighborhood-job-analysis). Once complete, our analyses were compiled into this RMarkdown dashboard and all code and data was added to our repository on [GitHub](https://github.com/Maryland-Health-Benefits-Exchange/MD_uninsured_analysis) [@rmarkdown]. Some data that was deemed sensitive or private was not included in our repository. Additionally, the IPUMS extract was too large to upload, so we instead provide all the parameters used to generate our extract in our methodology for ease of replication. All other code and public data were uploaded to our repository for reference or use by other interested researchers to replicate or review this analysis.
+
+__Data and Libraries__
+
+Data files were obtained from multiple sources. IPUMS (https://usa.ipums.org) was used to generate the data and DDI files for the ACS microdata using the parameters below.
+
+For all data at geographies lower than statewide, we used:
+2018 ACS 5yr (sample), Variables [YEAR, MULTYEAR, SAMPLE,
+SERIAL, HHWT, CLUSTER, STRATA, COUNTYFIP, STATEFIP, METRO, PUMA, GQ, OWNERSHP,
+OWNERSHPD, PERNUM, PERWT, FAMSIZE, RELATE, RELATED, SEX, AGE, RACE, RACED,
+HISPAN, HISPAND, BPL, BPLD, CITIZEN, YRIMMIG, HCOVANY, HCOVPRIV, HCOVPUB,
+HINSEMP, EMPSTAT, EMPSTATD, OCC, EDUC, INCSS, INCWELFR, INCSUPP, VETSTAT, IND,
+POVERTY, MIGRATE1, MIGRATE1D]
+
+For statewide data, we used:
+2018 ACS 1yr (sample), Variables [YEAR, SAMPLE,
+SERIAL, HHWT, CLUSTER, STRATA, COUNTYFIP, STATEFIP, METRO, PUMA, GQ, OWNERSHP,
+OWNERSHPD, PERNUM, PERWT, FAMSIZE, RELATE, RELATED, SEX, AGE, RACE, RACED,
+HISPAN, HISPAND, BPL, BPLD, CITIZEN, YRIMMIG, HCOVANY, HCOVPRIV, HCOVPUB,
+HINSEMP, EMPSTAT, EMPSTATD, OCC, EDUC, INCSS, INCWELFR, INCSUPP, VETSTAT, IND,
+POVERTY, MIGRATE1, MIGRATE1D]
+
+We utilized the 5-year data for sub-state geographies because it is a larger sample size (as it is 5 years of data aggregated) and therefore the estimates have a lower margin of error. For the statewide statistics, we utilized two sources: For the pre-COVID statewide estimates, the HI-05 Census Report "Health Insurance Coverage Status and Type of Coverage by State and Age for All Persons: 2019" was used [@bureau_american] and for the post-COVID statewide estimates the most recent 1-year 2018 ACS microdata was used, which is accurate at the state or higher level. Both the 1 and 5 year ACS microdata were imported, formatted, and edited into dataframes using the ipumsr library [@ipumsr].
+
+The unemployment map created by Ajani Pierce at the Maryland Department of Labor (MD LABOR) was imported using the "ESRI2sf" library created by Yongha Hwang, which imports an ArcGIS online map from a URL and transforms it into a shapefile dataframe in R [@esri2sf], [@pierce2020]. Importing the data directly from the static URL this way allows for the data to update when Mr. Pierce updates his map on ArcGIS Online for Maryland.
+
+The Urban Institute's analysis of COVID-19 related job losses that was modified and utilized for this project pulled Current Employment Statistics (CES) from the Bureau of Labor Statistics (BLS) using their available plain text files and several R libraries listed in the script [@urbaninstitute].
+
+Several additional R libraries were used and are listed both in this Rmarkdown dashboard and in the R script containing the code to build the objects and data that were imported into this project [@acs], [@labelled], [@janitor], [@stringr], [@knitr], [@flexdash], [@sf], [@leaflet], [@tigris], [@html], [@DT], [@shiny], [@plotly], [@tidy]. The RMarkdown Definitive Guide was an invaluable resource that was constantly consulted during this project as well [@rmark_def_guide].
+
+__Methodology__
+
+|     __A. 2018/19 Uninsured Statewide Estimates__
+Because we wanted to represent the most recent available data, all of the statewide estimates in this section are sourced from the 2019 1-year ACS data, specifically from the Census Bureau’s ACS Table HI-05, “Health Insurance Coverage Status and Type of Coverage by State and Age for All Persons: 2019” [@bureau_american]. The Uninsured that are Maryland Health Connection Eligible (MHC Eligible) are calculated by subtracting the estimated number of uninsured that are undocumented by the Center for Migration Studies of New York’s Data Tool [@warren_reverse_2020] from the total uninsured.
+
+|     __B. 2018/19 Uninsured Sub-State Estimates__
+For sub-state estimates, we used the 2018 5-year ACS dataset [@ruggles2020]. The 5-year files are recommended for sub-state analysis by the Census and other experts due to the larger sample size. 
+
+A fully annotated R script entitled "methodology_final.R" was written for this project. It contains all code and explanations of the code and is available on our [GitHub repository](https://github.com/Maryland-Health-Benefit-Exchange/MD_uninsured_analysis). This section will briefly highlight the steps taken in creating this analysis and interested researchers can consult that script for a more in-depth explanation. The IPUMS extract (and indeed all Census microdata samples) are anonymized person-level data, with each record (row) representing a certain number of individuals (the number of individuals that share those characteristics of that row being represented in the `perwt` variable) [@ruggles2020]. This allows for a person-level analysis of Census data while still protecting the privacy of the respondents. 
+
+The Public Use Microdata Area (PUMA) level of geography was chosen because each PUMA contains at least 100,000 individuals, is entirely contained within a state (i.e., does not cross state borders like ZIP codes can), and is geographically contiguous [@bureau]). Maps that show county level data were created using crosswalk files available from the Missouri Census Data Center’s geocorr application [@geocorr]. Statewide estimates were aggregated up from PUMA estimates.
+
+First, the two IPUMS data extracts were created on the usa.ipums.org website using the parameters listed in the Data and Libraries section above. Second, the modified Urban Institute analysis was performed on the IPUMS data extract. More detail on this step can be found in the section C. 
+
+The first step taken was to filter the data to include only non-institutionalized persons using the `relate` variable (ie: `filter(relate != 13)`). Next, we generated flag variables to assist in identifying individuals who are likely legally present. Flags were generated for receiving public assistance, having an occupation in the public or military sectors, being employed in an occupation that is likely to require legal status, and lastly a flag variable that takes the other flags and a few other variables and outputs the likely legal migration status for the person record. MHBE utilized a methodology similar to the one used by the Center for Migration Studies of New York (CMSNY) to generate our method of "logical edits" to generate this assumed "legal" status variable and they also supplied us with a list of occupations likely to require legal status [@warren_reverse_2020]. This list is not included the publicly available code. Interested researchers can reach out to CMSNY directly for this list of occupations or they can use their own list when replicating this analysis. Several grouping variables were also created including age groupings ("Under 18", "19-34", "35-64" and "65+"), racial/ethnic categories (based on the Census variables `race` and `hispan`), and percent of the Federal Poverty Level ("Less than 133% of FPL", "133-138% of FPL", "139-150% of FPL", "151-200% of FPL", "201-250% of FPL", "251-299% of FPL", "300-400% of FPL", and "More than 400% FPL"). These grouping variables allow for easier generation of aggregated plots, tables, and figures.
+
+The `acs_df` dataframe was now ready for actual analysis. To generate the 2018 uninsured estimates, we filtered the data to include only non-institutionalized persons and, for some of the analyses, individuals who are likely legally present. Several summary dataframes were created using different grouping variables including geography (`puma` or `state`) and using the `summarize()` function to aggregate the data up to those geographies using the person weight (`perwt`) variable. For the eligibility table, we created a summary dataframe that broke down the uninsured population by eligibility for Medicaid, subsidized QHP, and unsubsidized QHP as well as those who are not eligible to enroll in Medicaid or the exchange plans. Eligibility was based on the 2018 ACS `fpl` variable, which represents the income as a percent of the federal poverty level, and `age`. Furthermore, we utilized an analysis of characteristics of the uninsured population done by the Urban Institute [@blumberg2018] to estimate those ineligible for subsidy due to an offer of employer-sponsored insurance. We also generated dataframes specific to the undocumented population, but they are not utilized in this analysis other than to filter our populations to include only legally present individuals (i.e., `filter(lawful==1)`).
+
+|   __C. Potential COVID Impact 2018/19 – Uninsured Statewide Estimates__
+
+We modified the Urban Institute analysis to include all income levels as their analysis originally only looked at low income job losses. We also limited the analysis to only Maryland, where applicable. From this modified analysis, we obtained percent change in jobs data for each person-level row in our ACS dataset.  These percent change in jobs data were used to calculate the number of people who reported having ESI on the 2018 ACS who could now be at risk for losing their ESI due to job loss. 
+
+The Urban Institute analysis looks at net job loss and not just unemployment. This was important to isolate jobs lost specifically to COVID-19 rather than the unemployment rate which includes those who were unemployed pre-pandemic. Net change in unemployment rate from February 2020 to July 2020 is 4.3%, which aligns closely with the imputed net job loss from this analysis (4.4%).
+
+We used this modified analysis to generate our dataset from the 1-year 2018 ACS microdata available from IPUMS. This produced a dataframe with the variables listed as well as several additional variables generated during the Urban Institute's analysis (`led_code`, `percent_change_state_imputed`, `random_number`, `disemploy`, `is_employed`, `total_employment`). The variables relevant to our analysis are `led_code` (the CES industry code) and the employment variables that are utilized to generate the percent change in employment. 
+
+Because the modified Urban Institute analysis yielded estimated loss of ESI, but we know that not everyone who loses ESI goes on to become uninsured, we performed two adjustments to the statewide data. First, the pool of people who lost ESI was reduced by 32% to account for individuals who could obtain ESI through their spouse using an estimate from Urban Institute's analysis on COVID-19 related ESI loss [@banthin_changes_2020]. The pool was further reduced by the net change in Medicaid and QHP enrollment between [March and September](https://www.marylandhbe.com/news-and-resources/reportsdata/) to yield the final statewide estimates of uninsured individuals.  
+
+|   __D. Potential COVID Impact 2018/19 – Uninsured Sub-State and Industry Estimates__
+
+For the sub-state estimates, we did not apply the adjustments to account for individuals who obtain ESI through their spouse or gained coverage through Medicaid or QHPs as the Urban Institute analysis that we derived the 32% adjustment from was performed at the national level and therefore not applicable to lower geographies. As a result, the sub-state numbers will not sum to the statewide numbers and the sub-state numbers represent a “worst case scenario” in which every person predicted to lose their job subsequently lost their ESI. The sub-state estimates in this section also used the 5-year 2018 ACS microdata from IPUMS, just like in the previous "2018/19 Uninsured" section. Sub-state numbers were then divided into eligibility categories based on income reported at the time of the 2018 ACS (in the form of the poverty variable created by IPUMS) and age/age-group as well as a breakdown by race/ethnicity. Further demographic or characteristic based analysis is available upon request from the MHBE Policy Unit.
+
+In addition, we estimated the effects of the COVID-19 related job losses and subsequent loss of Employer-Sponsored Insurance (ESI) on the uninsured population. We generated dataframes summarizing ESI loss by both geography and industry and breaking down the eligibility of those who are uninsured or covered by ESI. ESI loss was determined by calculating the percent change in jobs using the Urban Institute generated variables and methodology, and multiplying the number of individuals with ESI by the percent change in jobs to yield an estimate of the number of individuals who potentially lost ESI coverage. After joining the Job Loss data to ESI data from ACS at the PUMA-industry level, data was further aggregated up to the BLS industry category. BLS industry categories were used (`led_code` variable in `COVID_Uninsured_Analysis`) as they can be considered a parent category of the IPUMS “industry” variable.  Comparing across sub-industries in an area or a small set of areas is likely not going to be very accurate and could be misleading. Lastly, summary dataframes were generated that captured racial and age breakdowns of the uninsured and ESI covered populations.  
+
+These dataframes were then saved as R objects (`saveRDS()`) to be imported into the Rmarkdown dashboard to generate the maps and plots. Each leaflet map generated in this project were also saved as HTML stand-alone files for ease of sharing and distribution on request. This project was designed in such a way as to allow for future modification to meet the needs of the MHBE Policy and Plan Management or Marketing departments, as well as other MHBE stakeholders and departments, and to generate interactive reports and visualizations.
+
+|   __E. Dashboard__
+
+This Rmarkdown dashboard was then created to visualize the summary dataframes in an interactive and intuitive fashion. The raw Rmarkdown code is available by clicking the "Source Code" button in the top right corner of the dashboard header and MHBE endeavored to fully annotate each step taken for readability and reproducibility. In addition to the leaflet maps generated to show the geographic distribution of the uninsured both pre and post COVID-19 related job losses, we also generated demographic breakdowns in the form of bar graphs examining the percent uninsured or ESI covered in each age grouping and racial/ethnic grouping. Lastly, the DT library was used to generate a fully interactive and visually appealing table showing the breakdown by industry of the uninsured, ESI covered, percent change in employment, and estimate of those at risk of losing their ESI coverage. A map of the unemployment insurance claims was also generated from the ArcGIS Online map created by A. Pierce at MD LABOR using leaflet [@pierce2020]. If this dashboard is updated in the future, this methodology and the GitHub repository will be updated.
+
+__Limitations and Assumptions:__
+
+- Estimated Medicaid and QHP eligibility is based on the reported income at the time of the 2018 ACS and not in the month that coverage was lost.
+	* As a result, it is likely that our estimates of individuals who lose ESI and are eligible for Medicaid or QHPs understate those eligible for Medicaid and overstate those eligible for QHPs, since Medicaid eligibility is based on current month income.
+- The specific occupations likely to require legal status that were used in the logical edits to assign "likely legal status" to person-level records were obtained from the Center for Migration Studies of New York [@warren_reverse_2020].
+	* This list is not included in the publicly available code. Interested researchers can reach out to CMSNY directly for this list of occupations or they can use their own list when replicating this analysis.
+- We utilized slightly different datasets in order to balance using the most recent data, while also doing more granular analysis. At the statewide geography, the 1-year ACS data is both the most recent and reasonably accurate, but at sub-state geographies it is advised by the Census Bureau and IPUMS to use the 5-year ACS file, which has a larger sample size and is therefore more accurate at that level.
+  * For statewide statistics in the "2018/19 Uninsured" tab, we utilized the 2019 1-year ACS data, specifically from the Census Bureau’s ACS Table HI-05, “Health Insurance Coverage Status and Type of Coverage by State and Age for All Persons: 2019”, as described in section A.
+  * Maryland's uninsured rate did not increase from 2018 to 2019, so we make the assumption that we can using data from 2019 in comparison to 2018 at the statewide level.
+  * For sub-state statistics, we utilized the 5-year ACS microdata file, as described above in section B.
+  * For statewide statistics in the "Potential COVID Impact" tab, we utilized the 1-year ACS microdata file for 2018, as described above in section C.
+  * For sub-state statistics, we again utilized the 5-year ACS microdata file, as described above in section D.
+  * We did not adjust the sub-state statistics to account for those who could enroll in their spouse's ESI or Medicaid/QHP enrollment since the analysis by the Urban Institute that we used for the statewide adjustments was at the national level and therefore cannot be applied to sub-state geographies.
+  
+	
+
+
+<a href = "#" data-toggle="tooltip" title="Lists all resources, persons, and works cited for this analysis."><span style="color:white">Citations</span></a> {data-icon="fa-list"}
+=====================================
+
+__Acknowledgments:__
+
+The following people and organizations provided guidance, advice, and code review without which this analysis could not have been completed: Adam Greeney MD LABOR, Grace Cooper & Matt Bombyk IPUMS, Anthony Damacio & Kendal Orgera KFF, Bowen Garrett & Graham MacDonald Urban Institute, Brett Fried & Elizabeth Lukanen SHADAC, Daniela Alulema CMSNY, and Richard Careaga Technocratic.io.
+
+__Citations:__
+
+
