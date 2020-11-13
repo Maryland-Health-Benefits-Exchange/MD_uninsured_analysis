@@ -7,7 +7,7 @@ adj. to account for unauth. immigrants
 Data files were obtained from multiple sources. IPUMS was used to generate the 
 data and DDI files for American Community Survey data, the unemployment map was imported using the ESRI2df
 r library, and BLS CES data was downloaded via the API in the Urban Institute
-modified script (available [here](https://github.com/Maryland-Health-Benefit-Exchange/covid-neighborhood-job-analysis)), and other data as detailed in our methodology. 
+modified script (available [here](https://github.com/Maryland-Health-Benefits-Exchange/covid-neighborhood-job-analysis)), and other data as detailed in our methodology. 
 
 IPUMS extract request: 2018 ACS 5yr (sample) 
 
