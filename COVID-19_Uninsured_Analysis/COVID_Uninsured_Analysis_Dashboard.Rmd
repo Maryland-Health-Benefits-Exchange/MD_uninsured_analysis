@@ -59,14 +59,10 @@ unins.race.plot <- readRDS("data/processed/unins-race-plot.Rds")
 esi.race.plot <- readRDS("data/processed/esi-race-plot.Rds")
 df.unins.pop <- readRDS("data/processed/df-unins-pop.Rds")
 df.summ.unfilt <- readRDS("data/processed/df-summ-unfilt.Rds")
-df.esi.loss.inelig <- readRDS("data/processed/df-esi-loss-inelig.Rds")
-df.esi.loss.a.qhp <- readRDS("data/processed/df-esi-loss-a-qhp.Rds")
-df.esi.loss.ya.qhp <- readRDS("data/processed/df-esi-loss-ya-qhp.Rds")
-df.esi.loss.caid <- readRDS("data/processed/df-esi-loss-caid.Rds")
 df.ind.esi.loss <- readRDS("data/processed/df-ind-esi-loss.Rds")
 df <- readRDS("data/processed/df.Rds")
 df.unins.pop.state.filt <- readRDS("data/processed/df-unins-pop-state-filt.Rds")
-df.esi.loss.state.inelig <- readRDS("data/processed/df-esi-loss-state-inelig.Rds")
+df.unins.pop.filt <- readRDS("data/processed/df-unins-pop-filt.Rds")
 age.fpl.plot <- readRDS("data/processed/age-fpl-plot.Rds")
 post.esi.race.plot <- readRDS("data/processed/post-esi-race-plot.Rds")
 post.unins.age.plot <- readRDS("data/processed/post_unins-age-plot.Rds")
@@ -75,7 +71,7 @@ post.unins.race.plot <- readRDS("data/processed/post-unins-race-plot.Rds")
 post.age.fpl.plot <- readRDS("data/processed/post-age-fpl-plot.Rds")
 df.esi.loss.state.unfilt <- readRDS("data/processed/df-esi-loss-state-unfilt.Rds")
 df.elig.pre <- readRDS("data/processed/df-elig-pre.Rds")
-
+df.elig.post <- readRDS("data/processed/df-elig-post.Rds")
 ```
 
 
@@ -454,13 +450,13 @@ leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB 
 ```
 
 
-### <a href = "#" data-toggle="tooltip" title="Uninsured non-institutionalized persons eligible to enroll in coverage through Maryland Health Connection ('Eligible Uninsured'), adjusted for the potential worst-case impact of job losses during the COVID-19 public health emergency.">Eligible Uninsured</a>
+### <a href = "#" data-toggle="tooltip" title="Uninsured non-institutionalized persons eligible to enroll in coverage through Maryland Health Connection ('Eligible Uninsured'), adjusted for the likely impact of job losses during the COVID-19 public health emergency.">Eligible Uninsured</a>
 
 ```{r}
 # join data to shapefile by puma
 joined <- ipums_shape_inner_join(df.unins.pop.filt, puma.sf, by=c("puma"="PUMACE10"))
 # define palette to use, use range of uninsured values for scale of colors
-pal <- colorNumeric(palette = "YlGnBu", domain = 3000:16000)
+pal <- colorNumeric(palette = "YlGnBu", domain = 3000:12000)
 # create simple popup with PUMA name and total uninsured estimate
 popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Uninsured: ", 
                  format(round(joined$new_unins,0), big.mark = ",", trim=TRUE))
@@ -495,7 +491,7 @@ leaflet(height = 400) %>% addProviderTiles("CartoDB.Positron", group = "CartoDB 
 # join data to shapefile by puma
 joined <- ipums_shape_inner_join(df.unins.pop.filt, puma.sf, by=c("puma"="PUMACE10"))
 # define palette to use, use range of uninsured values for scale of colors
-pal <- colorNumeric(palette = "YlGnBu", domain = 0:13)
+pal <- colorNumeric(palette = "YlGnBu", domain = 0:10)
 # create simple popup with PUMA name and total uninsured estimate
 popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Percent Uninsured: ", 
                  round((joined$new_pct_unins)*100,2), "%")
@@ -537,7 +533,7 @@ cnty.map.unins <- map3 %>% group_by(county) %>%
 # join shapefile to data
 joined.cnty <- ipums_shape_inner_join(cnty.map.unins, cnty.sf, by=c("county"="GEOID"))
 # define palette and popups
-bins <- c(0,1000,5000,10000,20000,40000,60000,80000,100000)
+bins <- c(0,1000,5000,10000,20000,40000,60000,80000)
 pal <- colorBin(palette = "YlGnBu", domain = joined.cnty$uninsured.cnty, bins = bins)
 popup <- paste0("Area: ", joined.cnty$NAMELSAD, "<br>", "Uninsured: ", 
                 format(round(joined.cnty$uninsured.cnty,0), big.mark = ",", trim=TRUE))
@@ -744,7 +740,7 @@ A fully annotated R script entitled "methodology_final.R" was written for this p
 
 The Public Use Microdata Area (PUMA) level of geography was chosen because each PUMA contains at least 100,000 individuals, is entirely contained within a state (i.e., does not cross state borders like ZIP codes can), and is geographically contiguous [@bureau]). Maps that show county level data were created using crosswalk files available from the Missouri Census Data Center’s geocorr application [@geocorr]. Statewide estimates were aggregated up from PUMA estimates.
 
-First, the two IPUMS data extracts were created on the usa.ipums.org website using the parameters listed in the Data and Libraries section above. Second, the modified Urban Institute analysis was performed on the IPUMS data extract. More detail on this step can be found in the section C. 
+First, the two IPUMS data extracts were created on the usa.ipums.org website using the parameters listed in the Data and Libraries section above. Second, the modified Urban Institute analysis was performed on the IPUMS data extracts. More detail on this step can be found in the section C. 
 
 The first step taken was to filter the data to include only non-institutionalized persons using the `relate` variable (ie: `filter(relate != 13)`). Next, we generated flag variables to assist in identifying individuals who are likely legally present. Flags were generated for receiving public assistance, having an occupation in the public or military sectors, being employed in an occupation that is likely to require legal status, and lastly a flag variable that takes the other flags and a few other variables and outputs the likely legal migration status for the person record. MHBE utilized a methodology similar to the one used by the Center for Migration Studies of New York (CMSNY) to generate our method of "logical edits" to generate this assumed "legal" status variable and they also supplied us with a list of occupations likely to require legal status [@warren_reverse_2020]. This list is not included the publicly available code. Interested researchers can reach out to CMSNY directly for this list of occupations or they can use their own list when replicating this analysis. Several grouping variables were also created including age groupings ("Under 18", "19-34", "35-64" and "65+"), racial/ethnic categories (based on the Census variables `race` and `hispan`), and percent of the Federal Poverty Level ("Less than 133% of FPL", "133-138% of FPL", "139-150% of FPL", "151-200% of FPL", "201-250% of FPL", "251-299% of FPL", "300-400% of FPL", and "More than 400% FPL"). These grouping variables allow for easier generation of aggregated plots, tables, and figures.
 
@@ -752,7 +748,7 @@ The `acs_df` dataframe was now ready for actual analysis. To generate the 2018 u
 
 |   __C. Potential COVID Impact 2018/19 – Uninsured Statewide Estimates__
 
-We modified the Urban Institute analysis to include all income levels as their analysis originally only looked at low income job losses. We also limited the analysis to only Maryland, where applicable. From this modified analysis, we obtained percent change in jobs data for each person-level row in our ACS dataset.  These percent change in jobs data were used to calculate the number of people who reported having ESI on the 2018 ACS who could now be at risk for losing their ESI due to job loss. 
+We modified the Urban Institute analysis to include all income levels as their analysis originally only looked at low income job losses. Additionally, we altered the script to cover the same time period as the enrollment data we used, which was March 2020 to September 2020. We also limited the analysis to only Maryland, where applicable. From this modified analysis, we obtained percent change in jobs data for each person-level row in our ACS dataset.  These percent change in jobs data were used to calculate the number of people who reported having ESI on the 2018 ACS who could now be at risk for losing their ESI due to job loss. 
 
 The Urban Institute analysis looks at net job loss and not just unemployment. This was important to isolate jobs lost specifically to COVID-19 rather than the unemployment rate which includes those who were unemployed pre-pandemic. Net change in unemployment rate from February 2020 to July 2020 is 4.3%, which aligns closely with the imputed net job loss from this analysis (4.4%).
 
@@ -762,7 +758,16 @@ Because the modified Urban Institute analysis yielded estimated loss of ESI, but
 
 |   __D. Potential COVID Impact 2018/19 – Uninsured Sub-State and Industry Estimates__
 
-For the sub-state estimates, we did not apply the adjustments to account for individuals who obtain ESI through their spouse or gained coverage through Medicaid or QHPs as the Urban Institute analysis that we derived the 32% adjustment from was performed at the national level and therefore not applicable to lower geographies. As a result, the sub-state numbers will not sum to the statewide numbers and the sub-state numbers represent a “worst case scenario” in which every person predicted to lose their job subsequently lost their ESI. The sub-state estimates in this section also used the 5-year 2018 ACS microdata from IPUMS, just like in the previous "2018/19 Uninsured" section. Sub-state numbers were then divided into eligibility categories based on income reported at the time of the 2018 ACS (in the form of the poverty variable created by IPUMS) and age/age-group as well as a breakdown by race/ethnicity. Further demographic or characteristic based analysis is available upon request from the MHBE Policy Unit.
+The sub-state estimates in this section also used the 5-year 2018 ACS microdata from IPUMS, just like in the previous "2018/19 Uninsured" section. For the sub-state estimates, we used a different approach to estimate the number of individuals that lost ESI, but were able to take up their partner's employer-sponsored insurance. The third script, "`household_analysis.R`" contains the code used to perform this analysis. Using a similar approach to that described previously, we deduced the number of people in each PUMA that would switch to their spouse's coverage if they lost ESI. This estimate was obtained using the following logical filters:
+
+1. The head of household (`relate==1`) was employed (`empstat==1`) and had ESI (`hinsemp==2`).
+2. The spouse (`relate==2`) was employed (`empstat==1`) and had ESI (`hinsemp==2`).
+
+We then calculated the number of people who lost ESI due to COVID and multiplied that by the probability that their spouse did not lose their job. This value was divided by the total number of people who lost ESI in that PUMA. This dataframe was saved as `acs_df_hh_puma` and used to adjust the PUMA level estimates of uninsured for each post-COVID impact map.
+
+We also obtained county-level net enrollment data from the same publicly available [monthly data reports](https://www.marylandhbe.com/news-and-resources/reportsdata/) used in the statewide estimates described in section C. This data frame was crosswalked from county to PUMA using the geocorr county to PUMA file and the results were used to further adjust the post-COVID impact maps.
+
+Sub-state numbers were then divided into eligibility categories based on income reported at the time of the 2018 ACS (in the form of the poverty variable created by IPUMS) and age/age-group as well as a breakdown by race/ethnicity. Further demographic or characteristic based analysis is available upon request from the MHBE Policy Unit.
 
 In addition, we estimated the effects of the COVID-19 related job losses and subsequent loss of Employer-Sponsored Insurance (ESI) on the uninsured population. We generated dataframes summarizing ESI loss by both geography and industry and breaking down the eligibility of those who are uninsured or covered by ESI. ESI loss was determined by calculating the percent change in jobs using the Urban Institute generated variables and methodology, and multiplying the number of individuals with ESI by the percent change in jobs to yield an estimate of the number of individuals who potentially lost ESI coverage. After joining the Job Loss data to ESI data from ACS at the PUMA-industry level, data was further aggregated up to the BLS industry category. BLS industry categories were used (`led_code` variable in `COVID_Uninsured_Analysis`) as they can be considered a parent category of the IPUMS “industry” variable.  Comparing across sub-industries in an area or a small set of areas is likely not going to be very accurate and could be misleading. Lastly, summary dataframes were generated that captured racial and age breakdowns of the uninsured and ESI covered populations.  
 
@@ -784,7 +789,6 @@ __Limitations and Assumptions:__
   * For sub-state statistics, we utilized the 5-year ACS microdata file, as described above in section B.
   * For statewide statistics in the "Potential COVID Impact" tab, we utilized the 1-year ACS microdata file for 2018, as described above in section C.
   * For sub-state statistics, we again utilized the 5-year ACS microdata file, as described above in section D.
-  * We did not adjust the sub-state statistics to account for those who could enroll in their spouse's ESI or Medicaid/QHP enrollment since the analysis by the Urban Institute that we used for the statewide adjustments was at the national level and therefore cannot be applied to sub-state geographies.
   
 	
 
@@ -794,7 +798,7 @@ __Limitations and Assumptions:__
 
 __Acknowledgments:__
 
-The following people and organizations provided guidance, advice, and code review without which this analysis could not have been completed: Adam Greeney MD LABOR, Grace Cooper & Matt Bombyk IPUMS, Anthony Damacio & Kendal Orgera KFF, Bowen Garrett & Graham MacDonald Urban Institute, Brett Fried & Elizabeth Lukanen SHADAC, Daniela Alulema CMSNY, and Richard Careaga Technocratic.io.
+The following people and organizations provided guidance, advice, and code review without which this analysis could not have been completed: Adam Greeney from MD LABOR; Grace Cooper & Matt Bombyk from IPUMS; Anthony Damacio & Kendal Orgera from Kaiser Family Foundation; Bowen Garrett & Graham MacDonald from the Urban Institute; Brett Fried & Elizabeth Lukanen from SHADAC; Charles Betley, Dolapo Fakeye, & Morgan Henderson from The Hilltop Institute at Univeristy of Maryland Baltimore County; Daniela Alulema from the Center for Migration Studies of New York;  and Richard Careaga (Technocratic.io).
 
 __Citations:__
 
