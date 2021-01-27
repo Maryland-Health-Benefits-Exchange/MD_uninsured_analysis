@@ -33,10 +33,11 @@
 # OWNERSHPD, PERNUM, PERWT, FAMSIZE, RELATE, RELATED, SEX, AGE, RACE, RACED, 
 # HISPAN, HISPAND, BPL, BPLD, CITIZEN, YRIMMIG, HCOVANY, HCOVPRIV, HCOVPUB, 
 # HINSEMP, EMPSTAT, EMPSTATD, OCC, EDUC, INCSS, INCWELFR, INCSUPP, VETSTAT, IND, 
-# POVERTY, MIGRATE1, MIGRATE1D]
+# POVERTY, MIGRATE1, MIGRATE1D, MARST] - characteristics attached: citizenship
+# and employment status of parents, spouse
 
 # change to whatever the working directory is for your files
-setwd("C:/Documents/COVID-19_Uninsured_Analysis")
+setwd("H:/Documents/Uninsured_by_zip/R Studio/COVID19_Uninsured_Analysis")
 #
 #library(tidycensus) # can be used to import census data in tidy format
 #library(pivottabler) # makes pivot tables
@@ -67,7 +68,7 @@ suppressPackageStartupMessages({
 # read in data dictionary from xml file produced by IPUMS job this will be used
 # as needed to label variables or produce IPUMS citations as modifying the df
 # causes the ipums labels and metadata to be dropped
-acs_ddi <- read_ipums_ddi("data/raw/usa_00015.xml")
+acs_ddi <- read_ipums_ddi("data/raw/usa_00024.xml")
 # read in data output using ddi to label and format
 acs_data <- read_ipums_micro(acs_ddi) %>% clean_names()
 
@@ -125,6 +126,8 @@ acs_df <- acs_df %>%
   mutate(race = ifelse(hispan %in% c(1:4),"Hispanic",race)) %>%
   # create a GEOID variable to join to shape file for PUMA 2010
   mutate(puma = sprintf("%05d", puma)) %>%
+  # recode hours worked variable to be a flag for full- (2) or part- (1) time work
+  #mutate(uhrswork = ifelse(uhrswork<40,1,2)) %>%
   mutate(GEOID10 = paste(statefip, puma, sep = "")) %>%
   # rename citizen parent/spouse variables for readability
   rename(citmom = citizen_mom) %>%
@@ -150,6 +153,8 @@ occupations <- readRDS("data/private/occupations.Rds")
 
 # create variable that captures whether rec'd public assistance
 acs_df <- acs_df %>% mutate_at(vars(incss, incwelfr, incsupp),
+                               funs(as.numeric(.))) %>%
+  mutate_at(vars(incss, incwelfr, incsupp),
                                funs(case_when(
                                  . > 0 & . < 99999 ~ 1,
                                  . == 99999 ~ 0,
@@ -211,7 +216,7 @@ df.sum.age <- acs_df %>%
     # uncomment to calc public/private insurance coverage
     #ins_pub = sum(ifelse(hcovpub==2, perwt,0)),
     #ins_priv = sum(ifelse(hcovpriv==2, perwt, 0)),
-    unweight_per = n()
+    #unweight_per = n()
   ) %>% 
   mutate(pct_uninsured = uninsured/tpop)
 saveRDS(df.sum.age, file = "data/processed/df-sum-age.Rds") # save to processed folder
@@ -270,6 +275,62 @@ df.sum.ind <- acs_df %>%
   mutate(pct_uninsured = uninsured/tpop)
 saveRDS(df.sum.ind, file = "data/processed/df-sum-ind.Rds")
 
+###################################################### net enrollment analysis
+# this section imports enrollment data from MHC that is not publicly available
+# any replication of this analysis will need to use state-specific data
+
+# import enrollment totals file
+library(readxl)
+Net_Enrollments <- read_excel("data/private/Net_Enrollments.xlsx", 
+                              sheet = "Net_Enrt_Cnty")
+enrt_df <- Net_Enrollments %>% clean_names()
+
+# drop last row which contains total for each column
+enrt_df <- enrt_df[-25,]
+# use geocorr to convert from ZipCode to PUMA
+# read in ZIP to PUMA crosswalk
+geocorrP2C <- read_csv("data/raw/geocorr_cnty_to_PUMA.csv") %>% 
+  mutate(puma12 = sprintf("%05d", as.numeric(puma12)))
+# join crosswalk to totals df by county
+enrt_df <- left_join(geocorrP2C, enrt_df, by = c("cntyname"="county"))
+# drop first row which contains labels for each column
+enrt_df <- enrt_df[-1,]
+# calculate totals per PUMA using allocation factor
+enrt_df <- enrt_df %>% mutate(ma.afact = net_ma*as.numeric(afact),
+                              qhp.afact = net_qhp*as.numeric(afact),
+                              grand_total.afact = net_total*as.numeric(afact))
+# aggregate up to puma level, summing the allocated totals
+puma.enrt.df <- enrt_df %>% group_by(puma12) %>% summarise(ma = sum(ma.afact, 
+                                                                na.rm = TRUE),
+                                                      qhp = sum(qhp.afact,
+                                                                na.rm = TRUE),
+                                                      grand_total = sum(grand_total.afact,
+                                                                        na.rm = TRUE))
+# read in detailed enrollment files
+
+# drop last row which contains column totals
+
+
+# use geocorr to convert from ZipCode to PUMA for each enrollment df, following
+# same steps as enrt_df above
+
+
+# transform from wide to long format for ease of calculation
+
+
+# create output datasets for use in adjusting specific subgroupings of later tables
+
+
+
+###################################### estimating uptake of spousal insurance
+# this section seeks to tabulate how many people who lost ESI will enroll in
+# spousal insurance based on: presence of spouse/partner (sp), sp employment status,
+# sp ESI status. Conditional statements identify eligible proportion which is 
+# then converted to a percent of total ESI loss for each row
+# use separate script "household_analysis.R" to perform necessary analysis
+source("code/household_analysis.R", encoding = "UTF-8")
+
+
 ###################################### eligibility breakdowns
 
 # characteristics of employer-sponsored insurance covered population
@@ -295,10 +356,10 @@ df.esi.pop <- acs_df %>%
   )
 saveRDS(df.esi.pop, file = "data/processed/df-esi-pop.Rds")
 
-# characteristics of the uninsured population
+# characteristics of the uninsured population, unadjusted
 df.unins.pop <- acs_df %>%
   # uncomment to remove unauthorized immigrants
-  # filter(lawful == 1) %>%
+  #filter(lawful == 1) %>%
   group_by(puma) %>%
   # summarize the uninsured population by eligibility for QHP, Medicare/caid
   summarize(tpop = sum(perwt),
@@ -321,24 +382,34 @@ df.unins.pop <- acs_df %>%
             # employment stats
             ins_emp = sum(ifelse(hinsemp==2,perwt,0)),
             total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)
+            total_unemp_post = sum(total_disemployment),
+            
   ) %>% 
   mutate(pct_uninsured = uninsured/tpop) %>%
   ungroup() %>%
   # calc the % change in employment
   mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
                                          0,
-                                         -total_unemp_post / total_emp_pre)) %>%
+                                         total_unemp_post / total_emp_pre)) %>%
   group_by(puma) %>%
   # calc the number of ppl potentially losing ESI coverage
   mutate(esi_loss = ins_emp * pct_change_imputed) %>%
   # convert positive esi_loss to 0 for ease of calculations
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  # the new uninsured rate including all the folks who lost esi (worst case)
-  mutate(new_unins = uninsured - esi_loss) %>%
+  mutate(esi_loss = ifelse(esi_loss<0, 0, esi_loss)) %>%
+  # the new uninsured rate including all the folks who lost esi less those w/ spousal/parent
+  # ESI available (uncomment to adjust for uptake of spousal insurance)
+  # join to spousal uptake df
+  #left_join(acs_df_hh_puma[,c("puma","pct_uptake")], by = "puma") %>%
+  # adjust by pct that will enroll in spousal ins
+  #mutate(esi_loss = esi_loss-(esi_loss*pct_uptake)) %>%
+  mutate(new_unins = uninsured + esi_loss) %>%
+  # join to enrollment totals and subtract net enrollment
+  # (uncomment to adjust for enrollment)
+  #left_join(puma.enrt.df,by=c("puma"="puma12")) %>%
+  #mutate(new_unins = new_unins - grand_total) %>%
   mutate(new_pct_unins = new_unins/tpop) %>%
   # drop employment vars for readability
-  select(-c(ins_emp, total_emp_pre, total_unemp_post))
+  select(-c(total_emp_pre, total_unemp_post))
 
 saveRDS(df.unins.pop, file = "data/processed/df-unins-pop.Rds")
 
@@ -375,148 +446,26 @@ df.unins.pop.filt <- acs_df %>%
   # calc the % change in employment
   mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
                                      0,
-                                     -total_unemp_post / total_emp_pre)) %>%
+                                     total_unemp_post / total_emp_pre)) %>%
   group_by(puma) %>%
   # calc the number of ppl potentially losing ESI coverage
   mutate(esi_loss = ins_emp * pct_change_imputed) %>%
   # convert positive esi_loss to 0 for ease of calculations
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  # the new uninsured rate including all the folks who lost esi (worst case)
-  mutate(new_unins = uninsured - esi_loss) %>%
+  mutate(esi_loss = ifelse(esi_loss<0, 0, esi_loss))  %>%
+  # join to spousal uptake df
+  left_join(acs_df_hh_puma[,c("puma","pct_uptake")], by = "puma") %>%
+  mutate(esi_loss = esi_loss-(esi_loss*pct_uptake)) %>%
+  # the new uninsured rate including newly uninsured due to esi loss
+  mutate(new_unins = uninsured + esi_loss) %>%
+  # join to enrollment totals and subtract net enrollment
+  left_join(puma.enrt.df,by=c("puma"="puma12")) %>%
+  mutate(new_unins = new_unins - grand_total) %>%
   mutate(new_pct_unins = new_unins/tpop) %>%
-  # drop employment vars for readability
-  select(-c(ins_emp, total_emp_pre, total_unemp_post))
+  mutate(new_pct_unins = new_unins/tpop) %>%
+  # drop enrollment vars for readability
+  select(-c(ma, qhp, grand_total))
 
 saveRDS(df.unins.pop.filt, file = "data/processed/df-unins-pop-filt.Rds")
-
-
-# job loss and insurance loss, by puma alone
-df.esi.loss <- acs_df %>%
-  # uncomment to remove unauthorized immigrants
-  filter(lawful == 1) %>%
-  group_by(puma) %>%
-  summarise(tpop = sum(perwt),
-            insured = sum(ifelse(hcovany==2,perwt,0)),
-            uninsured = sum(ifelse(hcovany==1,perwt,0)),
-            ins_emp = sum(ifelse(hinsemp==2,perwt,0)),
-            total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)) %>%
-  ungroup() %>%
-  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
-                                         0,
-                                         -total_unemp_post / total_emp_pre)) %>%
-  group_by(puma) %>%
-  mutate(esi_loss = ins_emp * pct_change_imputed) %>%
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  mutate(new_unins = uninsured - esi_loss) %>%
-  mutate(new_pct_unins = new_unins/tpop)
-saveRDS(df.esi.loss, file = "data/processed/df-esi-loss.Rds")
-
-# number of folks that will lose esi who aren't eligible for medicaid or qhp
-# temp df used to aggregate vars not filtered for eligibility (total population,
-# total insured/uninsured, total with ESI coverage)
-df.temp <- acs_df %>%
-  # uncomment to remove unauthorized immigrants
-  #filter(lawful == 1) %>%
-  group_by(puma) %>%
-  summarise(tpop = sum(perwt),
-            insured = sum(ifelse(hcovany==2,perwt,0)),
-            uninsured = sum(ifelse(hcovany==1,perwt,0)),
-            ins_emp = sum(ifelse(hinsemp==2,perwt,0)))
-
-# now generate aggregated vars w/ eligibility filter, left-join to temp df
-df.esi.loss.inelig  <- acs_df %>%
-  filter(age>18 & age<65 & poverty>399) %>%
-  group_by(puma) %>%
-  summarise(unins_inelig = sum(ifelse(hcovany==1,perwt,0)),
-            total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)) %>%
-  left_join(df.temp, by = "puma") %>%
-  ungroup() %>%
-  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
-                                         0,
-                                         -total_unemp_post / total_emp_pre)) %>%
-  group_by(puma) %>%
-  mutate(esi_loss = ins_emp * pct_change_imputed) %>%
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  mutate(new_unins = -esi_loss)
-saveRDS(df.esi.loss.inelig, file = "data/processed/df-esi-loss-inelig.Rds")
-
-# new temp df w/o unfiltered ESI var since we want to measure the number of ppl
-# losing ESI who potentially qualify for Medicaid/QHP
-df.temp2 <- acs_df %>%
-  # uncomment to remove unauthorized immigrants
-  #filter(lawful == 1) %>%
-  group_by(puma) %>%
-  summarise(tpop = sum(perwt),
-            insured = sum(ifelse(hcovany==2,perwt,0)),
-            uninsured = sum(ifelse(hcovany==1,perwt,0)))
-
-# number of folks that will lose esi who could enroll in Medicaid
-df.esi.loss.caid <- acs_df %>%
-  # uncomment to remove unauthorized immigrants
-  filter(lawful == 1 & (poverty<138 | age<19)) %>%
-  group_by(puma) %>%
-  summarise(tpop_caid = sum(perwt),
-            ins_caid = sum(ifelse(hcovany==2,perwt,0)),
-            unins_caid = sum(ifelse(hcovany==1,perwt,0)),
-            ins_emp = sum(ifelse(hinsemp==2,perwt,0)),
-            total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)) %>%
-  left_join(df.temp2, by = "puma") %>%
-  ungroup() %>%
-  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,0,
-                                     -total_unemp_post / total_emp_pre)) %>%
-  group_by(puma) %>%
-  mutate(esi_loss = ins_emp*pct_change_imputed) %>%
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  mutate(new_unins = -esi_loss)
-saveRDS(df.esi.loss.caid, file = "data/processed/df-esi-loss-caid.Rds")
-
-# number of folks that will lose esi who could enroll in Subsidized QHP (19-34 yr)
-df.esi.loss.ya.qhp <- acs_df %>%
-  # uncomment to remove unauthorized immigrants
-  filter(lawful == 1 & agegroup=="19 - 34" & poverty>138 & poverty<400) %>%
-  group_by(puma) %>%
-  summarise(tpop_yaqhp = sum(perwt),
-            ins_yaqhp = sum(ifelse(hcovany==2,perwt,0)),
-            unins_yaqhp = sum(ifelse(hcovany==1,perwt,0)),
-            ins_emp = sum(ifelse(hinsemp==2,perwt,0)),
-            total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)) %>%
-  left_join(df.temp2, by = "puma") %>%
-  ungroup() %>%
-  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
-                                     0,
-                                     -total_unemp_post / total_emp_pre)) %>%
-  group_by(puma) %>%
-  mutate(esi_loss = ins_emp * pct_change_imputed)%>%
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  mutate(new_unins = -esi_loss)
-saveRDS(df.esi.loss.ya.qhp, file = "data/processed/df-esi-loss-ya-qhp.Rds")
-
-# number of folks that will lose esi who could enroll in Subsidized QHP (35-64 yr)
-df.esi.loss.a.qhp <- acs_df %>%
-  # uncomment to remove unauthorized immigrants
-  filter(lawful == 1 & agegroup=="35 - 64" & poverty>138 & poverty<400) %>%
-  group_by(puma) %>%
-  summarise(tpop_aqhp = sum(perwt),
-            ins_aqhp = sum(ifelse(hcovany==2,perwt,0)),
-            unins_aqhp = sum(ifelse(hcovany==1,perwt,0)),
-            ins_emp = sum(ifelse(hinsemp==2,perwt,0)),
-            total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)) %>%
-  left_join(df.temp2, by = "puma") %>%
-  ungroup() %>%
-  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
-                                     0,
-                                     -total_unemp_post / total_emp_pre)) %>%
-  group_by(puma) %>%
-  mutate(esi_loss = ins_emp * pct_change_imputed) %>%
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  mutate(new_unins = -esi_loss)
-saveRDS(df.esi.loss.a.qhp, file = "data/processed/df-esi-loss-a-qhp.Rds")
-
 
 
 ################################################################################
@@ -537,9 +486,9 @@ saveRDS(puma.sf, file = "data/processed/puma-sf.Rds")
 
 ###################################### basic summary map
 # join data to shapefile by puma
-joined <- ipums_shape_inner_join(df.summary, puma.sf, by=c("puma"="PUMACE10"))
+joined <- ipums_shape_inner_join(df.unins.pop.filt, puma.sf, by=c("puma"="PUMACE10"))
 # define palette to use, use range of uninsured values for scale of colors
-pal <- colorNumeric(palette = "YlGnBu", domain = 3000:16000)
+pal <- colorNumeric(palette = "YlGnBu", domain = 3000:10000)
 # create simple popup with PUMA name and total uninsured estimate
 popup <- paste0("Area: ", joined$NAMELSAD10, "<br>", "Uninsured: ", round(joined$uninsured,0))
 # generate leaflet object, define basemap
@@ -564,7 +513,7 @@ saveWidget(widget = Unins_PUMA_map,
 
 
 ###################################### basic ESI map
-joined <- ipums_shape_inner_join(df.summary, puma.sf, by=c("puma"="PUMACE10"))
+joined <- ipums_shape_inner_join(df.unins.pop.filt, puma.sf, by=c("puma"="PUMACE10"))
 # create color palette based on ESI coverage bins
 pal <- colorNumeric(palette = "YlGnBu", domain = joined$ins_emp)
 # specify what displays on the popup when the PUMA is clicked
@@ -593,18 +542,19 @@ geocorrP2C <- read_csv("data/raw/geocorr2018.csv")
 geocorrP2C <- geocorrP2C[-1,]
 geocorrP2C <- geocorrP2C %>% mutate(puma = sprintf("%05d", as.numeric(puma12)))
 # join crosswalk to unins df by PUMA
-map3 <- left_join(df.summary, geocorrP2C, by = "puma")
+map3 <- left_join(df.unins.pop.filt, geocorrP2C, by = "puma")
 # calculate unins per PUMA using allocation factor
 map3 <- map3 %>% mutate(unins.cnty = uninsured*as.numeric(afact))
 # aggregate up to puma level, summing the allocated claims
 cnty.map.unins <- map3 %>% group_by(county) %>% summarise(uninsured.cnty = sum(unins.cnty, na.rm = TRUE))
-cnty.sf <- counties(state = "Maryland", cb = FALSE)
+cnty.sf <- tigris::counties(state = "Maryland", cb = FALSE, year=2018)
 cnty.sf <- st_transform(cnty.sf, 4326) # convert to projection used by leaflet
 saveRDS(cnty.sf, file = "data/processed/cnty-sf.Rds")
 joined.cnty <- ipums_shape_inner_join(cnty.map.unins, cnty.sf, by=c("county"="GEOID"))
 pal <- colorNumeric(palette = "YlGnBu", domain = joined.cnty$uninsured.cnty)
 popup <- paste0("Area: ", joined.cnty$NAMELSAD, "<br>", "Uninsured: ", joined.cnty$uninsured.cnty)
 
+# interactive map
 leaflet(joined.cnty) %>% 
   addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
   addPolygons(color = "#444444", weight = 1, smoothFactor = 0.2,
@@ -615,6 +565,59 @@ leaflet(joined.cnty) %>%
   addLegend("bottomright", pal = pal, values = ~uninsured.cnty,
             title = "Uninsured by County",
             opacity = 1)
+
+# pre-COVID
+# static map
+static.map.cnty.pre <- ggplot(joined.cnty) +
+  geom_sf(color="white", aes(fill = uninsured.cnty)) +
+  theme(panel.grid.major = element_line(colour = "transparent")) +
+  scale_fill_distiller(palette = "YlGnBu", direction = 1, name = "Estimate") +
+  labs(title = "Estimated Uninsured in Maryland by County", caption = "Source: IPUMS USA 5-year ACS 2018") +
+  geom_sf_label(aes(label = round(joined.cnty$uninsured.cnty,0)),
+             label.padding = unit(1,"mm"))
+# post-COVID
+# join crosswalk to unins df by ZIP
+map3 <- left_join(df.unins.pop.filt, geocorrP2C, by = "puma")
+# calculate unins per PUMA using allocation factor
+map3 <- map3 %>% mutate(unins.cnty = new_unins*as.numeric(afact))
+# aggregate up to puma level, summing the allocated claims
+cnty.map.unins <- map3 %>% group_by(county) %>% 
+  summarise(uninsured.cnty = sum(unins.cnty, na.rm = TRUE))
+# join shapefile to data
+joined.cnty <- ipums_shape_inner_join(cnty.map.unins, cnty.sf, by=c("county"="GEOID"))
+# define palette and popups
+bins <- c(0,1000,5000,10000,20000,40000,60000,80000)
+pal <- colorBin(palette = "YlGnBu", domain = joined.cnty$uninsured.cnty, bins = bins)
+popup <- paste0("Area: ", joined.cnty$NAMELSAD, "<br>", "Uninsured: ", 
+                format(round(joined.cnty$uninsured.cnty,0), big.mark = ",", trim=TRUE))
+
+leaflet(joined.cnty, height = 400) %>% 
+  addProviderTiles("CartoDB.Positron", group = "CartoDB (Default)") %>% 
+  addProviderTiles("Esri.WorldStreetMap", group = "Esri") %>%
+  addProviderTiles("CartoDB.DarkMatter", group = "CartoDB Dark") %>%
+  addPolygons(data=joined.cnty, fillColor = ~pal(uninsured.cnty),
+              # outline color, fill opacity, outline weight
+              color = "#444444", fillOpacity = 0.6, weight = 1, 
+              highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                  bringToFront = TRUE),
+              smoothFactor = 0.2, popup = ~popup, label = joined.cnty$NAMELSAD) %>%
+  addLegend("bottomright", pal = pal, values = ~uninsured.cnty,
+            title = "Eligible Uninsured by County") %>%
+  addLayersControl(
+    baseGroups = c("CartoDB (Default)", "Esri", "CartoDB Dark"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+# static map
+static.map.cnty.post <- ggplot(joined.cnty) +
+  geom_sf(color="white", aes(fill = uninsured.cnty)) +
+  theme(panel.grid.major = element_line(colour = "transparent")) +
+  scale_fill_distiller(palette = "YlGnBu", direction = 1, name = "Estimate") +
+  labs(title = "Potential Estimated Uninsured in Maryland by County, Post COVID ESI Losses", 
+       caption = "Source: IPUMS USA 5-year ACS 2018, BLS 2020 CES") +
+  geom_sf_label(aes(label = round(joined.cnty$uninsured.cnty,0)),
+                label.padding = unit(1,"mm"))
+
+
 
 ###################################### Unemployment by ZIP code map
 # Can use UI claims that occured during the pandemic (3/1-9/12) as another proxy
@@ -831,7 +834,7 @@ df.elig.post <- acs_df %>%
     # adults eligible for subsidized QHP due to income
     aQHP = sum(ifelse(hcovany==1 & lawful==1 & age>18 & age<65 & 
                         poverty>138 & poverty<400, perwt, 0)),
-    aQHP.esi = sum(ifelse(hinsemp & lawful==1 & age>18 & age<65 & 
+    aQHP.esi = sum(ifelse(hinsemp==2 & lawful==1 & age>18 & age<65 & 
                         poverty>138 & poverty<400, perwt, 0)),
     # children eligible for either MA or subsidized QHP
     cQHP = sum(ifelse(hcovany==1 & lawful==1 & age<18 & 
@@ -860,31 +863,42 @@ df.elig.post <- acs_df %>%
   # calculate percent change in employment for each PUMA
   mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
                                      0,
-                                     -total_unemp_post / total_emp_pre)) %>%
+                                     total_unemp_post / total_emp_pre)) %>%
   # calculate the new figures for each category
   mutate(MA.esi = MA.esi * pct_change_imputed) %>%
-  mutate(MA.esi = ifelse(MA.esi>0, 0, MA.esi))  %>%
-  mutate(MA = round(MA - MA.esi,0)) %>%
+  mutate(MA.esi = ifelse(MA.esi<0, 0, MA.esi))  %>%
+  mutate(MA = round(MA+MA.esi,0)) %>%
   mutate(aQHP.esi = aQHP.esi * pct_change_imputed) %>%
-  mutate(aQHP.esi = ifelse(aQHP.esi>0, 0, aQHP.esi))  %>%
-  mutate(aQHP = round(aQHP - aQHP.esi,0)) %>%
+  mutate(aQHP.esi = ifelse(aQHP.esi<0, 0, aQHP.esi))  %>%
+  mutate(aQHP = round(aQHP+aQHP.esi,0)) %>%
   mutate(cQHP.esi = cQHP.esi * pct_change_imputed) %>%
-  mutate(cQHP.esi = ifelse(cQHP.esi>0, 0, cQHP.esi))  %>%
-  mutate(cQHP = round(cQHP - cQHP.esi,0)) %>%
+  mutate(cQHP.esi = ifelse(cQHP.esi<0, 0, cQHP.esi))  %>%
+  mutate(cQHP = round(cQHP+cQHP.esi,0)) %>%
   mutate(tot.sub.esi = tot.sub.esi * pct_change_imputed) %>%
-  mutate(tot.sub.esi = ifelse(tot.sub.esi>0, 0, tot.sub.esi))  %>%
-  mutate(tot.sub = round(tot.sub - tot.sub.esi,0)) %>%
+  mutate(tot.sub.esi = ifelse(tot.sub.esi<0, 0, tot.sub.esi))  %>%
+  mutate(tot.sub = round(tot.sub+tot.sub.esi,0)) %>%
   mutate(uQHP.esi = uQHP.esi * pct_change_imputed) %>%
-  mutate(uQHP.esi = ifelse(uQHP.esi>0, 0, uQHP.esi))  %>%
-  mutate(uQHP = round(uQHP - uQHP.esi,0)) %>%
+  mutate(uQHP.esi = ifelse(uQHP.esi<0, 0, uQHP.esi))  %>%
+  mutate(uQHP = round(uQHP+uQHP.esi,0)) %>%
   mutate(unins.inelig.esi = unins.inelig.esi * pct_change_imputed) %>%
   mutate(unins.inelig.esi = ifelse(unins.inelig.esi>0, 0, unins.inelig.esi))  %>%
-  mutate(unins.inelig = round(unins.inelig - unins.inelig.esi,0)) %>%
+  mutate(unins.inelig = round(unins.inelig+unins.inelig.esi,0)) %>%
   mutate(tot.unsub = uQHP+unins.emp) %>%
   select(puma,MA,aQHP,cQHP,tot.sub,uQHP,unins.emp,tot.unsub)
   
   
 saveRDS(df.elig.post, file = "data/processed/df-elig-post.Rds")
 
-# use this to knit, normal knit button doesn't work
+################################################################################
+# statewide analysis using 1-year ACS file
+# need to first run the modified Urban Institute script available at:
+# https://github.com/Maryland-Health-Benefits-Exchange/covid-neighborhood-job-analysis
+# update 2v4d update to use alt lines listed under "for 1-year:" comment
+# rename to "ipums-data-merge-statewide.Rds" to differentiate
+# from PUMA level analysis input file
+# then read in the output file "ipums-data-merge-statewide.Rds"
+source("code - mine/methodology_statewide.R", encoding = "UTF-8")
+
+################################################################################
+# use this to knit dashboard, normal knit button doesn't work
 rmarkdown::render("COVID_Uninsured_Analysis_Dashboard.Rmd","flexdashboard::flex_dashboard")

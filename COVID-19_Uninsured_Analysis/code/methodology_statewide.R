@@ -28,15 +28,15 @@
 # r library, and BLS CES data was downloaded via the API in the Urban Institute
 # modified script
 # #
-# IPUMS extract request: 2018 ACS 1yr (sample), Variables [YEAR SAMPLE, 
+# IPUMS extract request: 2018 ACS 1yr (sample), Variables [YEAR, SAMPLE, 
 # SERIAL, HHWT, CLUSTER, STRATA, COUNTYFIP, STATEFIP, METRO, PUMA, GQ, OWNERSHP, 
 # OWNERSHPD, PERNUM, PERWT, FAMSIZE, RELATE, RELATED, SEX, AGE, RACE, RACED, 
 # HISPAN, HISPAND, BPL, BPLD, CITIZEN, YRIMMIG, HCOVANY, HCOVPRIV, HCOVPUB, 
 # HINSEMP, EMPSTAT, EMPSTATD, OCC, EDUC, INCSS, INCWELFR, INCSUPP, VETSTAT, IND, 
-# POVERTY, MIGRATE1, MIGRATE1D]
+# POVERTY, MIGRATE1, MIGRATE1D, MARST] - limited to Maryland (STATEFIP==24)
 
 # change to whatever the working directory is for your files
-setwd("C:/Documents/COVID-19_Uninsured_Analysis")
+setwd("H:/Documents/Uninsured_by_zip/R Studio/COVID19_Uninsured_Analysis")
 #
 #library(tidycensus) # can be used to import census data in tidy format
 #library(pivottabler) # makes pivot tables
@@ -68,7 +68,7 @@ suppressPackageStartupMessages({
 # as needed to label variables or produce IPUMS citations as modifying the df
 # causes the ipums labels and metadata to be dropped
 # read in 1-year ACS data extract for statewide totals
-acs_ddi_state <- read_ipums_ddi("data/raw/usa_00018.xml")
+acs_ddi_state <- read_ipums_ddi("data/raw/usa_00025.xml")
 # read in data output using ddi to label and format
 acs_data_state <- read_ipums_micro(acs_ddi_state) %>% clean_names()
 
@@ -206,48 +206,6 @@ saveRDS(acs_df_state, file = "data/processed/acs_df_state.Rds") # save to proces
 ####### Analysis: Health Insurance Breakdowns by ESI and Demographics ##########
 ################################################################################
 
-# characteristics of the uninsured population
-df.unins.pop.state <- acs_df_state %>%
-  # uncomment to remove unauthorized immigrants
-  # filter(lawful == 1) %>%
-  group_by(state) %>%
-  # summarize the uninsured population by eligibility for QHP, Medicare/caid
-  summarize(tpop = sum(perwt),
-            uninsured = sum(ifelse(hcovany==1,perwt,0)), # all below are unins
-            # those eligible for medicaid due to income or age
-            caid_elig = sum(ifelse(hcovany==1 & (poverty<138 | age<19), perwt, 0)),
-            # young adults (19-34) eligible for subsidized QHP due to income
-            ya_qhp_elig = sum(ifelse(hcovany==1 & agegroup=="19 - 34" & 
-                                       poverty>138 & poverty<400, perwt, 0)),
-            # older adults (35-64) eligible for subsidized QHP due to income
-            a_qhp_elig = sum(ifelse(hcovany==1 & agegroup=="35 - 64" & 
-                                      poverty>138 & poverty<400, perwt, 0)),
-            # all adults (18-64) eligible for unsubsidized QHP due to income
-            unsub_qhp_elig = sum(ifelse(hcovany==1 & age>18 & age<65 & 
-                                          poverty>399, perwt, 0)),
-            # elderly adults eligible for medicare
-            care_elig = sum(ifelse(hcovany==1 & agegroup=="65 +", perwt, 0)),
-            # employment stats
-            ins_emp = sum(ifelse(hinsemp==2,perwt,0)),
-            total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)
-  ) %>% 
-  mutate(pct_uninsured = uninsured/tpop) %>%
-  ungroup() %>%
-  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
-                                     0,
-                                     -total_unemp_post / total_emp_pre)) %>%
-  group_by(state) %>%
-  mutate(esi_loss = ins_emp * pct_change_imputed) %>%
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  # the new uninsured rate including all the folks who lost esi (worst case)
-  mutate(new_unins = uninsured - esi_loss) %>%
-  mutate(new_pct_unins = new_unins/tpop) %>%
-  # drop employment vars for readability
-  select(-c(ins_emp, total_emp_pre, total_unemp_post))
-
-saveRDS(df.unins.pop.state, file = "data/processed/df-unins-pop-state.Rds")
-
 # characteristics of the uninsured population, filtered to only MHC eligible &
 # number of folks that will lose esi overall, excluding those who could get ESI 
 # through spouse employer and the net gain in Medicaid/QHP enrollments from March
@@ -289,7 +247,7 @@ df.unins.pop.state.filt <- acs_df_state %>%
   mutate(esi_loss = ins_emp * pct_change_imputed) %>%
   mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
   # the new uninsured rate including all the folks who lost esi (worst case)
-  mutate(new_unins = uninsured - esi_loss + (esi_loss*.35)) %>%
+  mutate(new_unins = uninsured - esi_loss + (esi_loss*.32)) %>%
   # remove mar-sep enrolled
   mutate(new_unins = new_unins - 63934) %>%
   mutate(pct_uninsured = uninsured/tpop) %>%
@@ -368,46 +326,17 @@ df.esi.loss.state.unfilt  <- acs_df_state %>%
   group_by(state) %>%
   mutate(esi_loss = ins_emp * pct_change_imputed) %>%
   mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
+  # adjust by est 32% that will enroll in spousal ESI
   mutate(new_unins = uninsured - esi_loss + (esi_loss*.32)) %>%
-  # remove mar-sep enrolled
+  # remove mar-sep net enrolled
   mutate(new_unins = new_unins - 63934) %>%
   mutate(new_pct_unins = new_unins/tpop) %>%
   mutate(new_ins_emp = ins_emp+(esi_loss-esi_loss*.32)) %>%
   mutate(new_insured = insured+(esi_loss-esi_loss*.32)+63934)
 saveRDS(df.esi.loss.state.unfilt, file =  "data/processed/df-esi-loss-state-unfilt.Rds")
 
-# number of folks that will lose esi who aren't eligible for medicaid or qhp statewide
-# filtered to exclude unauthorized immigrants
-df.temp5 <- acs_df_state %>%
-  # uncomment to remove unauthorized immigrants
-  filter(lawful == 1) %>%
-  group_by(state) %>%
-  summarise(tpop = sum(perwt),
-            insured = sum(ifelse(hcovany==2,perwt,0)),
-            uninsured = sum(ifelse(hcovany==1,perwt,0)),
-            ins_emp = sum(ifelse(hinsemp==2,perwt,0)))
-
-df.esi.loss.state.inelig  <- acs_df_state %>%
-  filter(lawful == 1 & age>18 & age<65 & poverty>399) %>%
-  group_by(state) %>%
-  summarise(unins_inelig = sum(ifelse(hcovany==1,perwt,0)),
-            total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)) %>%
-  left_join(df.temp5, by = "state") %>%
-  ungroup() %>%
-  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
-                                     0,
-                                     -total_unemp_post / total_emp_pre)) %>%
-  group_by(state) %>%
-  mutate(esi_loss = ins_emp * pct_change_imputed) %>%
-  mutate(esi_loss = ifelse(esi_loss>0, 0, esi_loss))  %>%
-  mutate(new_unins = uninsured - esi_loss) %>%
-  mutate(new_pct_unins = new_unins/tpop) %>%
-  mutate(new_ins_emp = ins_emp+esi_loss) %>%
-  mutate(new_insured = insured+esi_loss)
-saveRDS(df.esi.loss.state.inelig, file =  "data/processed/df-esi-loss-state-inelig-filt.Rds")
-
 ###################################### undocumented population
+# not used in dashboard, just created for reference
 # total unauthorized population
 unauth.pop <- rbind(unlawful_ins,unlawful_unins)
 
@@ -465,7 +394,7 @@ pct_ESI_by_age <- acs_df_state %>%
 saveRDS(pct_ESI_by_age, file = "data/processed/pct_ESI_by_age.Rds")
 
 # breakdown of ESI by age groupings (0-18, 19-34, 35-64, 65+)
-pct_ESI_by_race <- acs_df_state_tate %>%
+pct_ESI_by_race <- acs_df_state %>%
   # uncomment to remove unauthorized immigrants
   filter(lawful == 1) %>%
   group_by(race) %>%
@@ -815,8 +744,7 @@ unins.state <- acs_df_state %>% summarize(uninsured = sum(ifelse(hcovany==1 & la
 # number of uninsured if all who lose ESI become uninsured
 acs_df_state %>% summarize(uninsured = (sum(ifelse(hcovany==1 & lawful==1 & relate != 13, 
                                              perwt, 0)))) %>%
-  #mutate(uninsured = uninsured-(uninsured*.089)) %>%
-  mutate(uninsured = uninsured-(df.unins.pop.state$esi_loss))
+  mutate(uninsured = uninsured-(df.unins.pop.state.filt$esi_loss))
 
 acs_df_state <- acs_df_state %>% mutate(fpl_grp = case_when(poverty >= 0 & poverty < 138 ~ 1,
                                                 poverty >= 139 & poverty <= 300 ~ 2,
