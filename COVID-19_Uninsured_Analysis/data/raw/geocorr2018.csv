@@ -1,0 +1,54 @@
+state,puma12,county,stab,cntyname,PUMAname,pop16,afact
+State code,PUMA (2012),County code,State abbreviation,County name,PUMA12 name,Population (2016 est.),puma12 to county allocation factor
+24,100,24001,MD,Allegany MD,Allegany & Garrett Counties--Cumberland City,72130,0.71
+24,1201,24003,MD,Anne Arundel MD,"Anne Arundel County (Northwest)--Severn, Odenton, Crofton, Maryland City & Fort Meade",163922.624,1
+24,1202,24003,MD,Anne Arundel MD,"Anne Arundel County (North)--Glen Burnie, Pasadena, Ferndale & Brooklyn Park",116078.076,1
+24,1203,24003,MD,Anne Arundel MD,"Anne Arundel County (Central)--Severna Park, Arnold & Lake Shore",142851.827,1
+24,1204,24003,MD,Anne Arundel MD,"Anne Arundel County (Southeast)--Annapolis City, Parole, Annapolis Neck & Edgewater",145493.472,1
+24,501,24005,MD,Baltimore MD,Baltimore County (Outer),122452.689,1
+24,502,24005,MD,Baltimore MD,"Baltimore County--Randallstown (East), Owings Mills, Milford Mill & Reisterstown",128001.266,1
+24,503,24005,MD,Baltimore MD,"Baltimore County--Pikesville (South), Lochearn, Cockeysville & Mays Chapel",116332.223,1
+24,504,24005,MD,Baltimore MD,"Baltimore County--Towson (East & Central), Parkville & Carney",120003.058,1
+24,505,24005,MD,Baltimore MD,"Baltimore County--Perry Hall, Middle River & Rosedale",113338.572,1
+24,506,24005,MD,Baltimore MD,"Baltimore County--Dundalk, Essex & Edgemere",116308.48,1
+24,507,24005,MD,Baltimore MD,"Baltimore County--Catonsville, Woodlawn & Arbutus",114589.712,1
+24,1500,24009,MD,Calvert MD,St. Marys & Calvert Counties,91251,0.448
+24,1300,24011,MD,Caroline MD,"Queen Annes, Talbot, Caroline, Dorchester & Kent Counties",32850,0.192
+24,400,24013,MD,Carroll MD,Carroll County,167656,1
+24,700,24015,MD,Cecil MD,Cecil County,102603,1
+24,1600,24017,MD,Charles MD,Charles County--La Plata Town & Waldorf,157705,1
+24,1300,24019,MD,Dorchester MD,"Queen Annes, Talbot, Caroline, Dorchester & Kent Counties",32258,0.189
+24,301,24021,MD,Frederick MD,Frederick County (Outside Greater Frederick City),127848.551,1
+24,302,24021,MD,Frederick MD,Frederick County (Central)--Greater Frederick City,119742.449,1
+24,100,24023,MD,Garrett MD,Allegany & Garrett Counties--Cumberland City,29425,0.29
+24,601,24025,MD,Harford MD,"Harford County (North & West)--Bel Air Town, Fallston & Jarrettsville",137512.579,1
+24,602,24025,MD,Harford MD,Harford County (South & East)--Aberdeen & Havre de Grace Cities,113519.421,1
+24,901,24027,MD,Howard MD,Howard County (West)--Columbia (West) & Ellicott City (Northwest),140688.197,1
+24,902,24027,MD,Howard MD,"Howard County (East)--Columbia (East), Ellicott City (Southeast) & Elkridge",176544.803,1
+24,1300,24029,MD,Kent MD,"Queen Annes, Talbot, Caroline, Dorchester & Kent Counties",19730,0.115
+24,1001,24031,MD,Montgomery MD,"Montgomery County (North & West)--Olney, Damascus, Clarksburg & Darnestown",140712.153,1
+24,1002,24031,MD,Montgomery MD,Montgomery County (West Central)--Germantown & Montgomery Village,137850.538,1
+24,1003,24031,MD,Montgomery MD,"Montgomery County (Central)--Rockville, Gaithersburg Cities & North Potomac",189743.079,1
+24,1004,24031,MD,Montgomery MD,"Montgomery County (South)--Bethesda, Potomac & North Bethesda",191361.868,1
+24,1005,24031,MD,Montgomery MD,"Montgomery County (East Central)--Wheaton, Aspen Hill & Glenmont",144902.527,1
+24,1006,24031,MD,Montgomery MD,"Montgomery County (East)--Fairland, Calverton, White Oak & Burtonsville",124090.298,1
+24,1007,24031,MD,Montgomery MD,Montgomery County (Southeast)--Takoma Park City & Silver Spring,115202.536,1
+24,1101,24033,MD,Prince Georges MD,Prince Georges County (Northwest)--College Park City & Langley Park,120175.408,1
+24,1102,24033,MD,Prince Georges MD,"Prince Georges County (North)--Laurel, Greenbelt (North & East) Cities & Beltsville",138424.31,1
+24,1103,24033,MD,Prince Georges MD,Prince Georges County (Northwest)--New Carrollton & Hyattsville (Southeast) Cities,111857.603,1
+24,1104,24033,MD,Prince Georges MD,"Prince Georges County (Central)--Seat Pleasant City, Capitol Heights Town & Landover",118784.024,1
+24,1105,24033,MD,Prince Georges MD,"Prince Georges County (East)--Bowie City, Kettering, Largo, Mitchellville & Lanham",175026.229,1
+24,1106,24033,MD,Prince Georges MD,"Prince Georges County (South)--Clinton, Fort Washington (South), Rosaryville & Croom",122827.767,1
+24,1107,24033,MD,Prince Georges MD,"Prince Georges County (Southwest)--Oxon Hill, Hillcrest Heights & Temple Hills",120953.658,1
+24,1300,24035,MD,Queen Annes MD,"Queen Annes, Talbot, Caroline, Dorchester & Kent Counties",48929,0.286
+24,1500,24037,MD,St. Marys MD,St. Marys & Calvert Counties,112587,0.552
+24,1400,24039,MD,Somerset MD,"Wicomico, Worcester & Somerset Counties--Salisbury City",25928,0.144
+24,1300,24041,MD,Talbot MD,"Queen Annes, Talbot, Caroline, Dorchester & Kent Counties",37278,0.218
+24,200,24043,MD,Washington MD,Washington County--Hagerstown City,150292,1
+24,1400,24045,MD,Wicomico MD,"Wicomico, Worcester & Somerset Counties--Salisbury City",102577,0.57
+24,1400,24047,MD,Worcester MD,"Wicomico, Worcester & Somerset Counties--Salisbury City",51444,0.286
+24,801,24510,MD,Baltimore city MD,"Baltimore City--Sandtown-Winchester, Ashburton & Mount Washington",138316.005,1
+24,802,24510,MD,Baltimore city MD,"Baltimore City--Guilford, Roland Park & Druid Lake",110305.957,1
+24,803,24510,MD,Baltimore city MD,"Baltimore City--Frankford, Belair-Edison & Loch Raven",119244.386,1
+24,804,24510,MD,Baltimore city MD,"Baltimore City--Inner Harbor, Canton & Bayview",129381.535,1
+24,805,24510,MD,Baltimore city MD,"Baltimore City--Irvington, Ten Hills & Cherry Hill",117416.116,1
