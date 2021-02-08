@@ -68,11 +68,11 @@ POVERTY, MIGRATE1, MIGRATE1D, MARST` - limited to Maryland (`STATEFIP==24`)
 
 ## Limitations and Assumptions
 See our Rmarkdown dashboard "methodology" section for complete list of limitations 
-and assumptions made for this analysis: [put final URL here]
+and assumptions made for this analysis: https://bit.ly/UninsAnalysisCOVID
 
 ## Citations
 See our Rmarkdown dashboard "Citations" section for complete list of works cited 
-and persons/organizations that assisted with this analysis : [put final URL here]
+and persons/organizations that assisted with this analysis : https://bit.ly/UninsAnalysisCOVID
 
 ## Contact
 MHBE.policy@maryland.gov
