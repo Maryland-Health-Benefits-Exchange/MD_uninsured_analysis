@@ -71,8 +71,7 @@ See our Rmarkdown dashboard "methodology" section for complete list of limitatio
 and assumptions made for this analysis: https://bit.ly/UninsAnalysisCOVID
 
 ## Citations
-See our Rmarkdown dashboard "Citations" section for complete list of works cited 
-and persons/organizations that assisted with this analysis : https://bit.ly/UninsAnalysisCOVID
+All references are available as a PDF in this repository: https://github.com/Maryland-Health-Benefits-Exchange/MD_uninsured_analysis/blob/main/References.pdf
 
 ## Contact
 MHBE.policy@maryland.gov
