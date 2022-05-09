@@ -9,7 +9,7 @@ data and DDI files for American Community Survey data, the unemployment map was 
 r library, and BLS CES data was downloaded via the API in the Urban Institute
 modified script (available [here](https://github.com/Maryland-Health-Benefits-Exchange/covid-neighborhood-job-analysis)), and other data as detailed in our methodology. 
 
-IPUMS extract request: 2018 ACS 5yr (sample) 
+IPUMS extract request: 2019 ACS 5yr (sample) 
 
 Variables:
 `YEAR, MULTYEAR, SAMPLE, 
@@ -19,7 +19,7 @@ HISPAN, HISPAND, BPL, BPLD, CITIZEN, YRIMMIG, HCOVANY, HCOVPRIV, HCOVPUB,
 HINSEMP, EMPSTAT, EMPSTATD, OCC, EDUC, INCSS, INCWELFR, INCSUPP, VETSTAT, IND, 
 POVERTY, MIGRATE1, MIGRATE1D, MARST` - limited to Maryland (`STATEFIP==24`)
 
-IPUMS extract request: 2018 ACS 1yr (sample) 
+IPUMS extract request: 2019 ACS 1yr (sample) 
 
 Variables:
 `YEAR, SAMPLE, 
