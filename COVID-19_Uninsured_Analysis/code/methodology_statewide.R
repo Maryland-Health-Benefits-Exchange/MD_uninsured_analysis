@@ -36,7 +36,7 @@
 # POVERTY, MIGRATE1, MIGRATE1D, MARST] - limited to Maryland (STATEFIP==24)
 
 # change to whatever the working directory is for your files
-setwd("H:/Documents/Uninsured_by_zip/R Studio/COVID19_Uninsured_Analysis")
+setwd("C:/Documents/COVID19_Uninsured_Analysis")
 #
 #library(tidycensus) # can be used to import census data in tidy format
 #library(pivottabler) # makes pivot tables
@@ -68,7 +68,7 @@ suppressPackageStartupMessages({
 # as needed to label variables or produce IPUMS citations as modifying the df
 # causes the ipums labels and metadata to be dropped
 # read in 1-year ACS data extract for statewide totals
-acs_ddi_state <- read_ipums_ddi("data/raw/usa_00025.xml")
+acs_ddi_state <- read_ipums_ddi("data/raw/usa_00033.xml")
 # read in data output using ddi to label and format
 acs_data_state <- read_ipums_micro(acs_ddi_state) %>% clean_names()
 
@@ -237,7 +237,9 @@ df.unins.pop.state.filt <- acs_df_state %>%
             # employment stats
             ins_emp = sum(ifelse(hinsemp==2,perwt,0)),
             total_emp_pre = sum(total_employment),
-            total_unemp_post = sum(total_disemployment)
+            total_unemp_post = sum(total_disemployment),
+            # public insurance
+            pub_ins = sum(ifelse(hcovpub==2, perwt, 0))
   ) %>% 
   ungroup() %>%
   mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
@@ -250,7 +252,8 @@ df.unins.pop.state.filt <- acs_df_state %>%
   mutate(new_unins = uninsured - esi_loss + (esi_loss*.32)) %>%
   # remove mar-sep enrolled
   mutate(new_unins = new_unins - 63934) %>%
-  mutate(pct_uninsured = uninsured/tpop) %>%
+  mutate(pct_uninsured = uninsured/tpop,
+         pct_public_ins = pub_ins/tpop) %>%
   mutate(new_pct_unins = new_unins/tpop) %>%
   # drop employment vars for readability
   select(-c(ins_emp, total_emp_pre, total_unemp_post))
@@ -405,7 +408,7 @@ saveRDS(pct_ESI_by_race, file = "data/processed/pct_ESI_by_race.Rds")
 
 # basic bar plot showing age breakdowns for uninsured
 x_label <- ipums_var_label(acs_data_state, age)
-source_info <- ipums_file_info(acs_ddi, "ipums_project")
+source_info <- ipums_file_info(acs_ddi_state, "ipums_project")
 unins.age.plot <- ggplot(pct_uninsured_by_age, aes(x=agegroup, y=pct_uninsured)) +
   geom_bar(stat = "identity", fill = "#00263a") +
   scale_x_discrete(x_label) +
@@ -421,7 +424,7 @@ saveRDS(unins.age.plot, file = "data/processed/unins-age-plot.Rds")
 
 # basic bar plot showing age breakdowns for ESI
 x_label <- ipums_var_label(acs_data_state, age)
-source_info <- ipums_file_info(acs_ddi, "ipums_project")
+source_info <- ipums_file_info(acs_ddi_state, "ipums_project")
 esi.age.plot <- ggplot(pct_ESI_by_age, aes(x=agegroup, y=pct_ESI)) +
   geom_bar(stat = "identity", fill = "#00263a") +
   scale_x_discrete(x_label) +
@@ -578,8 +581,8 @@ post_pct_ESI_by_race <- acs_df_state %>%
 saveRDS(post_pct_ESI_by_race, file = "data/processed/post_pct_ESI_by_race.Rds")
 
 # basic bar plot showing age breakdowns for uninsured
-x_label <- ipums_var_label(acs_data, age)
-source_info <- ipums_file_info(acs_ddi, "ipums_project")
+x_label <- ipums_var_label(acs_data_state, age)
+source_info <- ipums_file_info(acs_ddi_state, "ipums_project")
 post.unins.age.plot <- ggplot(post_pct_uninsured_by_age, aes(x=agegroup, y=new_pct_unins)) +
   geom_bar(stat = "identity", fill = "#00263a") +
   scale_x_discrete(x_label) +
@@ -594,8 +597,8 @@ post.unins.age.plot <- ggplot(post_pct_uninsured_by_age, aes(x=agegroup, y=new_p
 saveRDS(post.unins.age.plot, file = "data/processed/post_unins-age-plot.Rds")
 
 # basic bar plot showing age breakdowns for ESI
-x_label <- ipums_var_label(acs_data, age)
-source_info <- ipums_file_info(acs_ddi, "ipums_project")
+x_label <- ipums_var_label(acs_data_state, age)
+source_info <- ipums_file_info(acs_ddi_state, "ipums_project")
 post.esi.age.plot <- ggplot(post_pct_ESI_by_age, aes(x=agegroup, y=new_pct_esi)) +
   geom_bar(stat = "identity", fill = "#00263a") +
   scale_x_discrete(x_label) +
@@ -612,7 +615,7 @@ saveRDS(post.esi.age.plot, file = "data/processed/post-esi-age-plot.Rds")
 
 # basic bar plot showing race breakdown
 x_label <- "Race/Ethnicity"
-source_info <- ipums_file_info(acs_ddi, "ipums_project")
+source_info <- ipums_file_info(acs_ddi_state, "ipums_project")
 post.unins.race.plot <- ggplot(post_pct_unins_by_race, aes(x=race, y=new_pct_unins)) +
   geom_bar(stat = "identity", fill = "#00263a") +
   scale_x_discrete(x_label) +
@@ -628,7 +631,7 @@ saveRDS(post.unins.race.plot, file = "data/processed/post-unins-race-plot.Rds")
 
 # basic bar plot showing race breakdown
 x_label <- "Race/Ethnicity"
-source_info <- ipums_file_info(acs_ddi, "ipums_project")
+source_info <- ipums_file_info(acs_ddi_state, "ipums_project")
 post.esi.race.plot <- ggplot(post_pct_ESI_by_race, aes(x=race, y=new_pct_esi)) +
   geom_bar(stat = "identity", fill = "#00263a") +
   scale_x_discrete(x_label) +
@@ -709,7 +712,7 @@ saveRDS(post.age.fpl.plot, file = "data/processed/post-age-fpl-plot.Rds")
 ########################## standalone statewide stats ##########################
 ################################################################################
 
-# produced these just to verify totals agaisnt other published analysis, these
+# produced these just to verify totals against other published analysis, these
 # are not saved as Rds and imported to the Rmarkdown Dashboard
 
 # percent uninsured, total non-institutionalized population
@@ -765,7 +768,17 @@ pct_unins_by_race_18to34 <- acs_df_state %>%
             insured = sum(ifelse(hcovany==2, perwt, 0)),
             tpop = sum(perwt),
             "Percent Uninsured" = uninsured/tpop,
-            "Percent Insured" = insured/tpop)
+            "Percent Insured" = insured/tpop,
+            ESI = sum(ifelse(hinsemp==2, perwt, 0)),
+            total_emp_pre = sum(total_employment),
+            total_unemp_post = sum(total_disemployment)) %>%
+  mutate(pct_change_imputed = ifelse(total_emp_pre == 0,
+                                     0,
+                                     total_unemp_post / total_emp_pre)) %>%
+  mutate(esi_loss = ESI * pct_change_imputed) %>%
+  mutate(esi_loss = ifelse(esi_loss<0, 0, esi_loss))  %>%
+  mutate(new_unins = uninsured + esi_loss) %>%
+  mutate(new_pct_unins = new_unins/tpop)
 
 ins_status_by_race_18to34 <- gather(pct_unins_by_race_18to34, Status, est, 
                                    "Percent Uninsured":"Percent Insured", factor_key = TRUE)
@@ -781,6 +794,21 @@ unins.race.plot.18to34 <- ggplot(pct_unins_by_race_18to34, aes(x=race, y=uninsur
   scale_y_continuous("Number of Uninsured, 18 to 34 years") +
   labs(
     title = "Uninsured 18 to 34 years, by Race/Ethnicity",
+    subtitle = "Maryland Health Connection Eligible Population",
+    caption = paste0("Source: ", source_info)
+  ) + 
+  theme_economist() +
+  scale_fill_economist() +
+  coord_flip()
+# post COVID-19
+unins.race.plot.18to34.post <- ggplot(pct_unins_by_race_18to34, aes(x=race, y=new_unins)) +
+  geom_bar(stat = "identity", fill = "#00263a") +
+  geom_text(data=subset(pct_unins_by_race_18to34, new_unins != 0),
+            aes(label = round(new_unins,0), y = ifelse(new_unins<100,new_unins+500,new_unins+1400)), size=3, colour="black") +
+  scale_x_discrete(x_label) +
+  scale_y_continuous("Number of Uninsured, 18 to 34 years") +
+  labs(
+    title = "Potential Uninsured 18 to 34 years, by Race/Ethnicity",
     subtitle = "Maryland Health Connection Eligible Population",
     caption = paste0("Source: ", source_info)
   ) + 
