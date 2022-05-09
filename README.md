@@ -68,7 +68,7 @@ POVERTY, MIGRATE1, MIGRATE1D, MARST` - limited to Maryland (`STATEFIP==24`)
 
 ## Limitations and Assumptions
 See our Rmarkdown dashboard "methodology" section for complete list of limitations 
-and assumptions made for this analysis: https://www.marylandhbe.com/wp-content/docs/COVID_Uninsured_Analysis_Dashboard.html
+and assumptions made for this analysis: https://www.marylandhbe.com/wp-content/docs/COVID_Uninsured_Analysis_Dashboard_April2021.html
 
 ## Citations
 All references are available as a PDF in this repository: https://github.com/Maryland-Health-Benefits-Exchange/MD_uninsured_analysis/blob/main/References.pdf
